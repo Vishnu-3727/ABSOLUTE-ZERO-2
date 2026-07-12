@@ -47,9 +47,9 @@ Kernel never rolls back (no writes, no spawns). Domain compensations = Capabilit
 | 1 | Communication unavailable | Halt admission; in-flight stall (events blocked) | `fault.recorded` when possible; operator resume |
 | 2 | Config invalid | Keep last-good snapshot; reject new config.changed | Operator fix + new config.changed |
 | 3 | Replay deviates (byte-compare) | Halt; human/Observability alert | Operator diagnosis; log/code audit |
-| 4 | Ledger memory pressure | Refuse new admissions (halt); protect active requests | Operator scale or evict stalled requests |
+| 4 | Resource exhaustion (memory, queue saturation, descriptors, event backlog, future types) | Refuse new admissions (halt); protect active requests | Operator scale or evict stalled requests |
 
-Never guess, skip gates, or silent-continue.
+Never guess, skip gates, or silent-continue. Exhaustion thresholds are Config View data — new resource types need config, not Kernel changes.
 
 ---
 
