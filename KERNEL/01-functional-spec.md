@@ -21,11 +21,13 @@ V1's orchestrator became a god module: it owned classification, retrieval, execu
 
 ## What It Owns
 
-- **Admission decision:** whether an incoming request is accepted or rejected.
-- **Routing authority:** which admitted request routes to which owning component (Scheduling, Capability Planning, Storage, etc.).
-- **Gate mediation:** which verdicts gate which transitions; no transition occurs past a gate without a passing verdict.
-- **Execution coordination state:** which request is at which lifecycle stage, which gates are pending, which verdicts have arrived.
-- **Top-level halt authority:** the Kernel can halt admission if critical services fail (Communication unavailable, Kernel itself faulting).
+Every Kernel decision is a table lookup or a boolean check — never judgment.
+
+- **Admission enforcement:** mechanical checks only — request contract is schema-valid and the system is not halted. No worthiness, quota, or capacity judgment (capacity rejection is Scheduling backpressure; admission policy content is configuration owned by Storage).
+- **Routing enforcement:** static lookup of the request's *declared* type against the routing table. Table content is configuration (owned by Storage). The Kernel never inspects request content or infers intent — that is classification (Capability Planning, V1-H1). Unknown or ambiguous type → reject.
+- **Gate enforcement:** mechanically apply the gate definitions owned by Lifecycle — no transition past a gate without the required passing verdict. The Kernel never decides which gates exist or which verdicts gate which transitions.
+- **Execution coordination state:** bookkeeping — which request is at which lifecycle stage, which gates are pending, which verdicts have arrived.
+- **Top-level halt authority:** halt admission on enumerated deterministic conditions only (Communication unavailable, Kernel fault) — never discretionary.
 
 ## What It Never Owns
 
@@ -50,6 +52,9 @@ V1's orchestrator became a god module: it owned classification, retrieval, execu
 ## Non-Responsibilities
 
 - **Verdict computation** — Verification does this; Kernel enforces the result.
+- **Gate policy definition** — Lifecycle owns which gates exist and which verdicts gate which transitions; Kernel only enforces.
+- **Admission/routing policy content** — configuration owned by Storage; Kernel only applies it.
+- **Request classification** — Capability Planning infers intent; Kernel reads only the declared request type.
 - **Intent decomposition** — Capability Planning turns intent into plans.
 - **Work scheduling** — Scheduling owns priority, backpressure, budget allocation.
 - **Work execution** — Execution spawns and monitors processes.

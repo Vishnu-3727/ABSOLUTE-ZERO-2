@@ -24,9 +24,10 @@ reaches a terminal "done" state without the gate the Kernel guards.
 - Emit `gate.enforced` whenever a gate blocks or permits transition, so the decision is auditable.
 
 ## Owns
-- The admission decision and the request-routing authority.
-- Gate mediation policy at the boundary (which verdicts gate which transitions).
-- The system's top-level halt authority.
+- Admission enforcement (mechanical: contract validity + halt state; policy content is configuration owned by Storage).
+- Routing enforcement (static lookup on declared request type; never content inspection or intent inference).
+- Gate enforcement (mechanically applies gate definitions owned by Lifecycle; never defines which gates exist).
+- The system's top-level halt authority (enumerated deterministic triggers only).
 
 ## Never Owns
 - **Durable writes** — Storage is the sole writer.
