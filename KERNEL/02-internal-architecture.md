@@ -160,3 +160,16 @@ graph TD
 **No plugin or LLM module:** Domain work is delegated to peer components: Capability Planning (planning, classification), Verification (verdict computation), Execution (work spawning).
 
 Kernel is coordination machinery only — the *how*, never the *what*.
+
+---
+
+## Design Decisions
+
+### D1 — Concurrency model: interleaved requests, sequential loop
+The single-threaded loop coordinates many concurrent requests by interleaving their events in strict arrival order. Determinism holds per request because each request's decisions depend only on (its own event subsequence, config snapshot version), and the sequential loop excludes mutation races by construction. Kernel work per event is a boolean check or table lookup; heavy work runs in parallel inside Execution and agents. Scalability ceiling: if the loop ever saturates, shard loops by request-id hash — requests share no state, so sharding preserves all guarantees. Not built until measured.
+
+### D2 — Ledger state vs. history: current state in Kernel, immutable log in Storage
+The Request Ledger holds current coordination state in memory only. Every transition is emitted as an immutable event record; Storage persists the transition log (sole durable writer); Observability indexes it. Replay = feed the log back through the Kernel (verifies the determinism criterion). Crash recovery = rebuild the Ledger from the log. Closed requests are evicted from memory. Full in-Kernel history was rejected: it makes the Kernel a database and violates the Storage monopoly.
+
+### D3 — Routing: permanently static within the Kernel
+Kernel routing is coarse and static: declared request type → owning component. Runtime routing policy exists in the system but never in the Kernel: load/priority-based dispatch belongs to Scheduling (after routing); capability-based selection (which planner/tool/model) belongs to Capability Planning and Plugin Runtime — judgment over domain knowledge and learned reliability, both forbidden here. The routing *table* may change at runtime via `config.changed` (policy-as-data); determinism is preserved because the table version is recorded in the transition log.
