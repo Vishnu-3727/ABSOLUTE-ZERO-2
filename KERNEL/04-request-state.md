@@ -13,6 +13,7 @@
 | routing_target | string\|null | Owning component name (from routing table) | Coordinator |
 | cancellation_flag | bool | True if request.cancelled was consumed | Coordinator |
 | transition_sequence | int | Monotonic counter, increments per state change | Coordinator |
+| last_applied_event_id | id | Inbound dedup key — duplicate delivery dropped silently (Phase 6 D6a) | Coordinator |
 
 In-memory only. Created on request.received (state `created`, so the admission decision itself is recorded and replayable), evicted after cleanup. Coordinator is sole writer; all others read-only via query (Phase 2 Gate Enforcer usage).
 
