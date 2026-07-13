@@ -143,6 +143,28 @@ class Store:
         self._persisted_at.pop(request_id, None)
         self._evicted_ids.add(request_id)
 
+    # -- recovery seeding (M5) ------------------------------------------------
+    def seed(self, request_id, record):
+        """Recovery-only bootstrap (RSM/05-implementation-spec.md M5,
+        RSM/03 §1/§11): plant a checkpoint-derived record as the starting
+        point for resuming a non-terminal request's fold, instead of
+        refolding from event 1. The other legitimate direct writer of
+        `_active`/`_state` besides `create` — distinct from the live
+        reducer-mutation discipline RSM-I2 governs (this is RSM's own
+        restart-time reconstruction, RSM/03 §1 bullets 2-3, a different
+        phase entirely, running before the read surface has even reopened).
+        Seeds as ACTIVE only — the recovery scenario this exists for is
+        non-terminal-request resumption (§1 "identify non-terminal requests
+        as of the crash"); a terminal-and-later request is already durably
+        finalized and needs only `recovery.replay_journal` for byte-
+        identical verification, not a bounded-cost resume. Raises if the id
+        is already present — seed is a once-per-recovery bootstrap, never
+        an overwrite of a live record."""
+        if self.state_of(request_id) != ABSENT:
+            raise ValueError("store.seed_conflict:" + request_id)
+        self._active[request_id] = record
+        self._state[request_id] = ACTIVE
+
     # -- eviction gate (M4) ---------------------------------------------------
     def evict_gate(self, request_id, clock, retention_window):
         """RSM-I11: eviction requires all three preconditions — terminal,
@@ -243,6 +265,19 @@ if __name__ == "__main__":
     try:
         store2.apply_terminal("never-born", None)
         raise SystemExit("terminal on absent id allowed")
+    except ValueError:
+        pass
+
+    # seed (M5 recovery bootstrap): plants a record directly as ACTIVE
+    seeded = record_mod.birth("r9", {"declared_type": "a"}).evolve(work={"tasks": {}})
+    store3 = Store()
+    store3.seed("r9", seeded)
+    assert store3.state_of("r9") == ACTIVE
+    assert store3.get("r9") is seeded
+
+    try:
+        store3.seed("r9", seeded)  # already present
+        raise SystemExit("re-seed over existing id allowed")
     except ValueError:
         pass
 
