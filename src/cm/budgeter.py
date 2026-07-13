@@ -48,11 +48,36 @@ def section_envelopes(config, budget_tokens):
 
 
 def _validate_candidate(c):
-    if not isinstance(c, dict) or "id" not in c or "section" not in c:
+    if not isinstance(c, dict) or "id" not in c or "section" not in c or "content" not in c:
         raise ValueError("budgeter.malformed_candidate")
-    content = c.get("content")
-    if not isinstance(content, dict) or any(t not in content for t in TIERS):
-        raise ValueError("budgeter.malformed_candidate:" + str(c.get("id")))
+
+
+def _tier_options(content):
+    """Yield (tier, text) pairs to try, best fidelity first.
+
+    RSM/reference/resolver candidates (sources.py, resolver.py) carry a
+    dict of all three tiers, so the normal full->section->reference ladder
+    applies. UMS-sourced candidates arrive already tier-fitted to a single
+    string: `ums.query.query()` runs its own `ums/budget.py` fit at query
+    time (spec budget_tokens), collapsing the tier dict to the chosen
+    text before sources.py ever sees it (sources.py "never invents its
+    own [tiers]" — it passes UMS's hit through as-is). For those, CM has
+    exactly one tier to place or drop; there is no further text to
+    degrade to.
+    # ponytail: this is a Phase 2/UMS boundary quirk, not a Phase 4 defect
+    # — sources.py already passes UMS content through unmodified per its
+    # own docstring. Upgrade path if a future phase wants CM to control
+    # UMS-side fidelity too: have sources.py request budget_tokens=None
+    # (or a very large budget) from ums.query so UMS returns the full tier
+    # dict and CM's budgeter is the only place tiering decisions happen.
+    """
+    if isinstance(content, dict):
+        for tier in TIERS:
+            if tier not in content:
+                raise ValueError("budgeter.malformed_candidate:missing_tier:" + tier)
+            yield tier, content[tier]
+    else:
+        yield "full", content
 
 
 def fit(candidates, budget_tokens, config):
@@ -77,10 +102,8 @@ def fit(candidates, budget_tokens, config):
         section = c["section"]
         if section not in SECTION_NAMES:
             raise ValueError("budgeter.unknown_section:" + str(section))
-        content = c["content"]
         chosen = None
-        for tier in TIERS:
-            text = content[tier]
+        for tier, text in _tier_options(c["content"]):
             cost = _token_count(text)
             remaining_section = envelopes[section] - section_used[section]
             remaining_global = budget_tokens - global_used
