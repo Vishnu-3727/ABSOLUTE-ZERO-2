@@ -8,7 +8,8 @@ duplicate id raises, mirroring kernel ledger.py's `_create`.
 M1 wires only the birth and terminal paths (RSM/05-implementation-spec.md
 M1). Reducer-driven contributing-family updates, persistence, retention and
 real eviction are later milestones; `evict_gate` below is an honest stub for
-M4 (see its docstring).
+M4 (see its docstring). `mark_evicted` is the direct marker M3's `query`
+module needs to exercise the evicted-id read path ahead of M4's real gate.
 """
 from . import record as record_mod
 from . import transitions
@@ -92,6 +93,23 @@ class Store:
         self._state[request_id] = TERMINAL
         return new_record
 
+    # -- eviction marking (M3: query needs a real evicted id to answer
+    # against; M4: real three-precondition-gated eviction) ------------------
+    def mark_evicted(self, request_id):
+        """Move a record out of active/retained into the evicted-id set.
+
+        # ponytail: no precondition check — matches `evict_gate`'s existing
+        # honesty (it always answers False, since persistence/retention
+        # don't exist yet). M4 wires `evict_gate` as the real gate driving
+        # this call automatically; until then this is the direct marker
+        # M3's `query` module tests need to exercise the evicted-id read
+        # path (RSM/03 §2 "evicted ... queries answer 'evicted'").
+        """
+        self._active.pop(request_id, None)
+        self._retained.pop(request_id, None)
+        self._state.pop(request_id, None)
+        self._evicted_ids.add(request_id)
+
     # -- eviction gate (M4 stub) ---------------------------------------------
     def evict_gate(self, request_id):
         """RSM-I11: eviction requires all three preconditions — terminal,
@@ -132,6 +150,11 @@ if __name__ == "__main__":
         pass
 
     assert store.evict_gate("r1") is False  # M4 stub
+
+    store.mark_evicted("r1")
+    assert store.state_of("r1") == EVICTED
+    assert store.get("r1") is None
+    assert "r1" not in store  # falls out of _state, membership goes through evicted set only
 
     store2 = Store()
     try:
