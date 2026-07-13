@@ -31,16 +31,17 @@ def imports_from(tree):
     return sorted(records, key=lambda r: (r["line"], r["target"]))
 
 
-def resolve(record, importer_module):
+def resolve(record, importer_package):
     """Absolute dotted target of an import record.
 
-    Relative imports resolve against the importing module's package:
-    level 1 = same package, each extra level walks one package up.
+    importer_package = the package the importing file lives in ("" for a
+    top-level module; a package's __init__ passes the package itself).
+    Level 1 = that package, each extra level walks one package up.
     """
     if record["level"] == 0:
         return record["target"]
-    parts = importer_module.split(".")
-    base = parts[:len(parts) - record["level"]]
+    parts = importer_package.split(".") if importer_package else []
+    base = parts[:len(parts) - (record["level"] - 1)]
     if record["target"]:
         base.append(record["target"])
     return ".".join(base)
@@ -64,7 +65,14 @@ def build_graph(files, model):
     Returns {"nodes": [{"id", "kind"}...], "edges": [...]}, both sorted.
     """
     module_of = {path: dotted for dotted, path in model["modules"].items()}
+    packages = set(model["packages"])
     internal = set(model["top_level"])
+
+    def package_of(path):
+        dotted = module_of.get(path, "")
+        if dotted in packages:
+            return dotted  # __init__.py: the package itself
+        return dotted.rsplit(".", 1)[0] if "." in dotted else ""
     nodes = [{"id": "file:" + path, "kind": "file"} for path in files]
     nodes += [{"id": "module:" + dotted, "kind": "module"}
               for dotted in model["modules"]]
@@ -77,9 +85,9 @@ def build_graph(files, model):
             nodes.append({"id": sym_id, "kind": "symbol"})
             edges.append({"kind": "contains", "src": "file:" + path,
                           "dst": sym_id})
-        importer = module_of.get(path, "")
+        importer_package = package_of(path)
         for record in entry.get("imports") or ():
-            target = resolve(record, importer)
+            target = resolve(record, importer_package)
             if not target:
                 continue
             edges.append({"kind": "imports", "src": "file:" + path,
@@ -102,10 +110,11 @@ if __name__ == "__main__":
         ["os", "numpy.linalg", "pkg.core", "sibling"]
     assert records[3]["level"] == 1
 
-    assert resolve({"target": "sibling", "level": 1}, "pkg.mod") == "pkg.sibling"
-    assert resolve({"target": "", "level": 1}, "pkg.mod") == "pkg"
-    assert resolve({"target": "deep", "level": 2}, "a.b.c") == "a.deep"
-    assert resolve({"target": "os", "level": 0}, "pkg.mod") == "os"
+    # importer package "pkg" covers both pkg/mod.py and pkg/__init__.py
+    assert resolve({"target": "sibling", "level": 1}, "pkg") == "pkg.sibling"
+    assert resolve({"target": "", "level": 1}, "pkg") == "pkg"
+    assert resolve({"target": "deep", "level": 2}, "a.b") == "a.deep"
+    assert resolve({"target": "os", "level": 0}, "pkg") == "os"
 
     internal = {"pkg", "app"}
     assert classify_target("pkg.core", internal) == "internal"
