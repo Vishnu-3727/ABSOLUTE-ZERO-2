@@ -369,6 +369,8 @@ is the shared vocabulary referenced by all component specs.
 | `cost.recorded` | Observability | Scheduling (budget), Frontend |
 | `session.wake` | Lifecycle | Kernel, Observability |
 | `session.sleep` | Lifecycle | Kernel, Observability |
+| `state.updated` | Request State Manager | Frontend, Observability |
+| `state.evicted` | Request State Manager | Observability |
 
 ---
 
@@ -538,3 +540,4 @@ flowchart LR
 | Communication | Event bus + message schema; pub/sub contracts; delivery guarantees. | [communication.md](COMPONENTS/communication.md) |
 | Lifecycle | State machines for long-lived things; owns transition legality. | [lifecycle.md](COMPONENTS/lifecycle.md) |
 | Observability | Unified telemetry: traces, metrics, token/cost accounting, audit log; one schema, one sink. | [observability.md](COMPONENTS/observability.md) |
+| Request State Manager | Single source of truth for runtime request state; event-sourced materialized view, journal, replay. | [RSM/](RSM/01-problem-definition.md) |
