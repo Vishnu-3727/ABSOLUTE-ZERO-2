@@ -15,12 +15,13 @@ import json
 from . import classify, conventions, deps, module_model, symbols
 
 
-def _extract_file(path, rec, storage, repo_root):
+def extract_file(path, rec, storage, repo_root):
+    """One file's extraction record (public: onboarding slices reuse it)."""
     raw = storage.read_bytes(repo_root + "/" + path)
     cls = classify.classify(path, raw[:128])
     entry = {"content_hash": rec.content_hash, "classification": cls,
              "symbols": None, "imports": [], "measures": None,
-             "unparsed": None}
+             "module_doc": None, "unparsed": None}
     if cls["language"] != "python":
         return entry  # file-level record; no extractor for this language
     try:
@@ -32,6 +33,7 @@ def _extract_file(path, rec, storage, repo_root):
     entry["symbols"] = symbols.extract(cls["language"], tree)
     entry["imports"] = deps.imports_from(tree)
     entry["measures"] = conventions.measure(source, tree)
+    entry["module_doc"] = ast.get_docstring(tree)
     return entry
 
 
@@ -49,7 +51,7 @@ def extract_repo(inventory, storage, repo_root, previous=None):
         if prev is not None and prev["content_hash"] == rec.content_hash:
             files[path] = prev
             continue
-        files[path] = _extract_file(path, rec, storage, repo_root)
+        files[path] = extract_file(path, rec, storage, repo_root)
     model = module_model.build(files)
     graph = deps.build_graph(files, model)
     measured = [e["measures"] for e in files.values()
