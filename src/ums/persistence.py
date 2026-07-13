@@ -21,32 +21,44 @@ def index_key(repo_id):
     return "ums/index/" + repo_id
 
 
-def save_index(storage, repo_id, inventory, freshness_map):
-    """Serialize inventory + freshness map to Storage. Single write, canonical."""
-    body = json.dumps(
-        {"inventory": {p: asdict(r) for p, r in inventory.items()},
-         "freshness": freshness_map},
-        sort_keys=True, separators=(",", ":"))
+def save_json(storage, key, obj):
+    """Checksummed canonical-JSON blob write (any json-able object)."""
+    body = json.dumps(obj, sort_keys=True, separators=(",", ":"))
     envelope = json.dumps(
         {"checksum": hashlib.sha256(body.encode()).hexdigest(), "body": body},
         sort_keys=True, separators=(",", ":"))
-    storage.write(index_key(repo_id), envelope.encode())
+    storage.write(key, envelope.encode())
 
 
-def load_index(storage, repo_id):
-    """Load and verify. Returns (inventory, freshness_map) or raises loud."""
-    raw = storage.read(index_key(repo_id))
+def load_json(storage, key):
+    """Verified blob read; corruption raises IndexCorruptionError, loud."""
+    raw = storage.read(key)
     try:
         envelope = json.loads(raw)
         checksum, body = envelope["checksum"], envelope["body"]
         if hashlib.sha256(body.encode()).hexdigest() != checksum:
-            raise IndexCorruptionError("index.checksum_mismatch:" + repo_id)
-        data = json.loads(body)
-        inventory = {p: FileRecord(**fields) for p, fields in data["inventory"].items()}
-        freshness_map = data["freshness"]
+            raise IndexCorruptionError("index.checksum_mismatch:" + key)
+        return json.loads(body)
     except IndexCorruptionError:
         raise
-    except Exception as exc:  # malformed json / missing keys / bad records
+    except Exception as exc:  # malformed json / missing keys
+        raise IndexCorruptionError("index.unreadable:" + key) from exc
+
+
+def save_index(storage, repo_id, inventory, freshness_map):
+    """Serialize inventory + freshness map to Storage. Single write, canonical."""
+    save_json(storage, index_key(repo_id),
+              {"inventory": {p: asdict(r) for p, r in inventory.items()},
+               "freshness": freshness_map})
+
+
+def load_index(storage, repo_id):
+    """Load and verify. Returns (inventory, freshness_map) or raises loud."""
+    data = load_json(storage, index_key(repo_id))
+    try:
+        inventory = {p: FileRecord(**fields) for p, fields in data["inventory"].items()}
+        freshness_map = data["freshness"]
+    except Exception as exc:  # missing keys / bad records
         raise IndexCorruptionError("index.unreadable:" + repo_id) from exc
     return inventory, freshness_map
 
