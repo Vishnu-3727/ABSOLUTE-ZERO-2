@@ -51,7 +51,8 @@ class UmsPhase1Case(unittest.TestCase):
     def test_roundtrip_canonical_identical(self):
         inv, tracker = self.onboard_and_index()
         self.assertEqual(sorted(inv),
-                         ["app.py", "pkg/__init__.py", "pkg/core.py", "util.py"])
+                         ["README.md", "app.py", "broken.py", "pkg/__init__.py",
+                          "pkg/core.py", "settings.toml", "util.py"])
         inv2, fresh2 = persistence.load_index(self.store, "fix")
         self.assertEqual(inventory.canonical(inv2), inventory.canonical(inv))
         self.assertEqual(fresh2, tracker.snapshot())
