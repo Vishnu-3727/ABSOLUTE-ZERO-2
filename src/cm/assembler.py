@@ -22,10 +22,44 @@ prioritized, deduped, dependency-expanded candidate list) and:
 Never mutates the candidates handed in (budgeter already copies each
 surviving item into a new dict). Same (spec, candidates, config) -> the
 same RequestMemory bytes and hash, replay after replay (CM-I2, Law 6).
+
+Seam fix (recorded Phase 4, closed here): `dedup.py` keeps BOTH sides of a
+contradiction under the SAME id by design ("never blended" -- both variants
+survive, each tagged `contradiction: True`), but `validator.py`'s
+zero-duplicate-ids gate (CM structural correctness, not negotiable) then
+rejects that pair. Disambiguating here -- a deterministic content-hash
+suffix applied only to contradiction-flagged items, right before grouping
+into sections -- keeps dedup's "never blend, always surface" contract
+intact (both variants still visible, still flagged, original id preserved
+under `original_id`) while satisfying the validator. This is the smallest
+in-architecture fix per the recorded upgrade path; dedup.py's own contract
+(same id in, both kept, flagged) is unchanged.
 """
+import hashlib
+import json
+
 from . import budgeter, events, validator
 from .request_memory import SECTION_NAMES, build as build_request_memory, content_hash
 from .spec import spec_hash as compute_spec_hash
+
+
+def _disambiguate_contradictions(items):
+    """Deterministic id suffix (content-hash prefix, CM-I2) for any item
+    dedup.py flagged `contradiction: True`, so two variants that share an
+    id no longer collide in validator's duplicate-id gate. Non-contradicted
+    items pass through untouched; the original id survives under
+    `original_id` and `contradiction: True` stays visible either way."""
+    out = []
+    for item in items:
+        if not item.get("contradiction"):
+            out.append(item)
+            continue
+        original_id = item["id"]
+        digest = hashlib.sha256(
+            json.dumps(item.get("content"), sort_keys=True, default=str).encode()
+        ).hexdigest()[:8]
+        out.append(dict(item, id=original_id + "#" + digest, original_id=original_id))
+    return out
 
 
 class Assembler:
@@ -43,9 +77,10 @@ class Assembler:
         budget_tokens = spec["budget_tokens"]
 
         result = budgeter.fit(candidates, budget_tokens, config)
+        fitted_items = _disambiguate_contradictions(result["items"])
 
         sections = {name: [] for name in SECTION_NAMES}
-        for item in result["items"]:
+        for item in fitted_items:
             sections[item["section"]].append(item)
 
         coverage = (len(result["items"]) / len(candidates)) if candidates else 1.0
@@ -145,6 +180,26 @@ if __name__ == "__main__":
     assert rm3.budget_meta["tokens_used"] <= 3
     if rm3.budget_meta["truncated"]:
         assert len(bus3.messages("context.overflow")) == 1
+
+    # seam fix: a contradiction pair (same id, dedup.py kept both, flagged)
+    # survives end-to-end through validator -- both variants present,
+    # both flagged, ids disambiguated so validator's duplicate-id gate
+    # doesn't reject the artifact
+    from . import dedup as dedup_mod
+    raw_a = cand("x1", "symbols", 1.0, full_n=2)
+    raw_b = dict(raw_a, content={"full": "DIFFERENT", "section": "s ", "reference": "r "})
+    contradiction_candidates = dedup_mod.dedup([raw_a, raw_b])
+    assert len(contradiction_candidates) == 2
+    assert all(c["contradiction"] for c in contradiction_candidates)
+
+    rm4 = Assembler().assemble(build_spec("r3", "x", 100), contradiction_candidates, config, BusDouble())
+    survivors = rm4.sections["symbols"]
+    assert len(survivors) == 2
+    assert all(item["contradiction"] for item in survivors)
+    assert {item["original_id"] for item in survivors} == {"x1"}
+    assert len({item["id"] for item in survivors}) == 2  # disambiguated, no collision
+    ok, reason = validator.validate(rm4)
+    assert ok, reason
 
     # malformed candidates raise loud
     try:
