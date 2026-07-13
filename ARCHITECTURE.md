@@ -251,7 +251,7 @@ indexed** — work memory and knowledge memory never mix.
 ```mermaid
 flowchart TB
     subgraph Volatile["Volatile — per call"]
-        WM[Working Memory<br/>Optimal Context Package<br/>owner: Context Management]
+        WM[Working Memory<br/>Request Memory<br/>owner: Context Management]
     end
 
     subgraph Knowledge["Knowledge — indexed, queryable"]
@@ -285,7 +285,7 @@ flowchart TB
 
 | Tier | Lifetime | Indexed? | Owner | Written via | Purpose |
 |------|----------|----------|-------|-------------|---------|
-| **Working** | One LLM call | n/a (ephemeral) | Context Management | not persisted | The Optimal Context Package: ranked, deduped, budget-fitted context for a single model call. |
+| **Working** | One LLM call | n/a (ephemeral) | Context Management | not persisted | Request Memory (formerly the Optimal Context Package): ranked, deduped, budget-fitted context for a single execution. |
 | **Repository** | Life of the repo | Yes (the index) | Repository Memory | Storage | Shared semantic understanding of a managed repo: symbols, structure, conventions, history. **The only retrieval authority.** |
 | **Semantic** | Cross-repo, durable | Yes | Learning | Storage | Lessons, faults, planning priors, plugin reliability. The compounding moat. |
 | **Episodic** | Durable, append-only | **No** | Observability | Storage | Traces, plans, runs, decisions. Committed for audit/replay; never retrieved by similarity. |
@@ -388,7 +388,7 @@ Storage on the owner's behalf. No two rows share a state.
 | Repository index, symbols, structure, conventions, history | Repository Memory | Storage |
 | Plans, classification results, capability matches | Capability Planning | Storage |
 | Plugin registry, versions, isolation, health scores | Plugin Runtime | Storage |
-| Optimal Context Package (ephemeral) | Context Management | not persisted |
+| Request Memory (ephemeral) | Context Management | not persisted |
 | Verification verdicts | Verification | Storage |
 | Process sandbox / timeout / retry state | Execution | (in-memory) |
 | Lessons, faults, planning priors, plugin reliability | Learning | Storage |
@@ -403,8 +403,10 @@ Storage on the owner's behalf. No two rows share a state.
   (kills H2's six implementations).
 - **Durable writes** exist in exactly one place: Storage (kills H5 lost updates).
 - **Process spawning** exists in exactly one place: Execution (kills H4).
-- **Prompt/context assembly** exists in exactly one place: Context Management —
-  there is no separate prompt engine.
+- **Context assembly** exists in exactly one place: Context Management — it
+  builds Request Memory and nothing else builds it.
+- **Prompt compilation** exists in exactly one place: the Prompt Compiler
+  (future Execution Service) — it consumes Request Memory, never builds it.
 - **Config** has one source of truth: Storage (kills M4 duplication).
 - **Telemetry** has one schema and one sink: Observability (kills M8 scatter).
 
@@ -476,7 +478,7 @@ stateDiagram-v2
 
 ## Data flows
 
-### Context assembly (retrieval → Optimal Context Package)
+### Context assembly (retrieval → Request Memory)
 
 Shows Law 2 in action: Context Management is the sole assembler, Repository
 Memory is the sole retriever, budget is a hard ceiling.
@@ -488,8 +490,8 @@ flowchart LR
     CTX -->|read lessons/priors| SEM[(Semantic memory · via Storage)]
     CTX -->|read prior decisions| EPI[(Episodic · via Storage)]
     MEM -->|ranked results ≤25-token summaries| CTX
-    CTX -->|rank · dedup · fit budget · fidelity tiers| OCP[Optimal Context Package]
-    OCP --> LLM[[LLM call · model-agnostic iface]]
+    CTX -->|rank · dedup · fit budget · fidelity tiers| RQM[Request Memory]
+    RQM --> LLM[[LLM call · model-agnostic iface]]
     CTX -.context.assembled.-> OBS[Observability]
 ```
 
@@ -532,7 +534,7 @@ flowchart LR
 | Execution | Sole process spawner; sandbox, timeouts, retries, caps, failure containment. | [execution.md](COMPONENTS/execution.md) |
 | Capability Planning | Intent → validated plans; classification, decomposition, capability matching, confidence. | [capability-planning.md](COMPONENTS/capability-planning.md) |
 | Plugin Runtime | Discovers/loads/isolates/versions plugins; capability registry; self-healing reliability. | [plugin-runtime.md](COMPONENTS/plugin-runtime.md) |
-| Context Management | Sole assembler of the Optimal Context Package; ranking, dedup, budget, prompt compilation. | [context-management.md](COMPONENTS/context-management.md) |
+| Context Management | Sole assembler of Request Memory; ranking, dedup, budget, freshness. Prompt compilation deferred to future Prompt Compiler service. | [context-management.md](COMPONENTS/context-management.md) |
 | Verification | Mechanical gates on plans/diffs/artifacts/selftests; verdicts as enforced events. | [verification.md](COMPONENTS/verification.md) |
 | Learning | Harvests closed traces into lessons/faults/priors; updates reliability. | [learning.md](COMPONENTS/learning.md) |
 | Storage | Sole durable-write authority; atomic/locked/transactional; config source of truth. | [storage.md](COMPONENTS/storage.md) |
