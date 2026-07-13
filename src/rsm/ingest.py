@@ -51,20 +51,35 @@ class Ingest:
     `process()` completes one event fully (all seven steps) before the
     caller may hand it the next — no interleaving (RSM/03 §9)."""
 
-    def __init__(self, store, journal):
+    def __init__(self, store, journal, telemetry=None):
         self.store = store
         self.journal = journal
-        # RSM's own health counters (RSM/03 §8) — "counted" seam for M2;
-        # real bus-facing telemetry (`fault.recorded`, `state.updated`) is
-        # M5.
+        # RSM's own health counters (RSM/03 §8), real since M2.
         self.counters = {"applied": 0, "dedup_drop": 0, "fault": 0, "unregistered": 0}
+        # M5: injected `telemetry.Telemetry` instance, or None. None keeps
+        # every M1-M4 call site (`Ingest(store, journal)`, no third arg)
+        # working unchanged — telemetry emission is additive wiring, not a
+        # required dependency of the pipeline itself.
+        self.telemetry = telemetry
 
     def _telemetry(self, kind, **fields):
-        # ponytail: M5 stub. Real emission (`state.updated`/`state.evicted`/
-        # `fault.recorded` to Observability, RSM/03 §8) lands with the
-        # `telemetry` module. This is the counted, honest no-op seam
-        # RSM/05-implementation-spec.md M2 calls for — counters above are
-        # already real; only the bus publish is deferred.
+        """Dispatches to the injected `telemetry.Telemetry` object (M5) if
+        one was supplied; a no-op otherwise. `kind` selects which Telemetry
+        method fires — "fault" -> `fault_recorded`, "state.updated" ->
+        `state_updated` (with the `immediate` flag the caller already
+        computed from the transition-table action, see `process()` below).
+        dedup_drop/unregistered emit no bus event of their own (RSM/03 §8
+        names no `state.*`/`fault.*` row for them) — `self.counters` above
+        is already their real, own-counter home (RSM/03 §8 "no metrics
+        beyond own counters")."""
+        if self.telemetry is None:
+            return None
+        if kind == "fault":
+            self.telemetry.fault_recorded(fields.get("request_id"), fields.get("family"),
+                                           fields.get("reason"))
+        elif kind == "state.updated":
+            self.telemetry.state_updated(fields["request_id"], fields["family"],
+                                          immediate=fields.get("immediate", False))
         return None
 
     def process(self, event):
@@ -113,7 +128,13 @@ class Ingest:
 
         self.journal.append(request_id, event_id, reducer_version=1)
         self.counters["applied"] += 1
-        self._telemetry("state.updated", request_id=request_id, family=family)
+        # Lifecycle-block change (birth or the terminal Lifecycle family) is
+        # immediate; every other applied-event change coalesces (RSM/03 §8,
+        # RSM/05 M5) — `row.action` already tells them apart, reused as-is
+        # rather than re-deriving "which block changed" from the record.
+        immediate = row.action in (CREATE, APPLY_TERMINAL)
+        self._telemetry("state.updated", request_id=request_id, family=family,
+                         immediate=immediate)
         return APPLIED
 
 
