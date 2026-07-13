@@ -37,6 +37,26 @@ def extract_file(path, rec, storage, repo_root):
     return entry
 
 
+def assemble(files):
+    """Repo-level extraction output from per-file records (no disk work).
+
+    Also serves partial file sets: onboarding assembles a queryable
+    extraction from the slices indexed so far.
+    """
+    model = module_model.build(files)
+    graph = deps.build_graph(files, model)
+    measured = [e["measures"] for e in files.values()
+                if e["measures"] is not None]
+    return {
+        "files": files,
+        "modules": model,
+        "graph": graph,
+        "conventions": conventions.profile(measured),
+        "unparsed": sorted(p for p, e in files.items()
+                           if e["unparsed"] is not None),
+    }
+
+
 def extract_repo(inventory, storage, repo_root, previous=None):
     """Full extraction output for one repo.
 
@@ -52,18 +72,7 @@ def extract_repo(inventory, storage, repo_root, previous=None):
             files[path] = prev
             continue
         files[path] = extract_file(path, rec, storage, repo_root)
-    model = module_model.build(files)
-    graph = deps.build_graph(files, model)
-    measured = [e["measures"] for e in files.values()
-                if e["measures"] is not None]
-    return {
-        "files": files,
-        "modules": model,
-        "graph": graph,
-        "conventions": conventions.profile(measured),
-        "unparsed": sorted(p for p, e in files.items()
-                           if e["unparsed"] is not None),
-    }
+    return assemble(files)
 
 
 def canonical(extraction):
