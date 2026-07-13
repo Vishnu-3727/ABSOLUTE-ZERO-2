@@ -43,7 +43,6 @@ def ledger_canon(coord):
     entries = {}
     for rid in coord.ledger.request_ids():
         data = dataclasses.asdict(coord.ledger.get(rid))
-        data["pending_gates"] = sorted(data["pending_gates"])
         entries[rid] = data
     return json.dumps(entries, sort_keys=True).encode()
 

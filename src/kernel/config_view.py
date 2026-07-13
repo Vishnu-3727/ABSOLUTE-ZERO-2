@@ -81,10 +81,6 @@ class ConfigView:
         """Transition-table lookup; None when the (state, event) pair is unmatched."""
         return self._data["transitions"].get(state + "|" + event)
 
-    def raw(self):
-        """Underlying snapshot data (for logging into replayable records)."""
-        return self._data
-
 
 if __name__ == "__main__":
     snap = {

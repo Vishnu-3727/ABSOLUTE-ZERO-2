@@ -19,7 +19,8 @@ class RequestState:
     lifecycle_state: str = "created"
     config_version: int = 0
     recorded_verdicts: dict = field(default_factory=dict)  # gate -> bool
-    pending_gates: set = field(default_factory=set)
+    # ponytail: phase-4 pending_gates dropped — derivable from the transition
+    # table (gates pending = guarded rows not yet permitted); never read.
     routing_target: str | None = None
     cancellation_flag: bool = False
     transition_sequence: int = 0

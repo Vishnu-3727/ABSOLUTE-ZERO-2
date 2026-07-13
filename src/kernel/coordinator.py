@@ -178,9 +178,13 @@ class Coordinator:
         })
 
     def _publish_row(self, entry, row, decision, cfg, info):
-        for name in row["emit"]:
+        for index, name in enumerate(row["emit"]):
             payload = self._payload_for(name, entry, decision, row, cfg, info)
-            self._emit(name, entry.request_id, payload, cfg)
+            # Deterministic outbound id: replay re-emission reproduces the
+            # same id, so consumer dedup-by-event-id holds across crashes
+            # (D5a exactly-once effect).
+            event_id = "%s:%d:%d" % (entry.request_id, entry.transition_sequence, index)
+            self._emit(name, entry.request_id, payload, cfg, event_id)
 
     def _payload_for(self, name, entry, decision, row, cfg, info):
         rid = entry.request_id
@@ -196,9 +200,13 @@ class Coordinator:
             return {"request_id": rid, "state": "cancelled", "ack": True}
         return {"request_id": rid, "state": entry.lifecycle_state}
 
-    def _emit(self, name, request_id, payload, cfg):
-        self._out_seq += 1
-        env = envelope.make("out-%d" % self._out_seq, name, request_id,
+    def _emit(self, name, request_id, payload, cfg, event_id=None):
+        if event_id is None:
+            # Faults and other non-replayed emissions: counter id is fine —
+            # they are alerts, not deduped work items (I9 outbound-only).
+            self._out_seq += 1
+            event_id = "out-%d" % self._out_seq
+        env = envelope.make(event_id, name, request_id,
                             self._clock(), cfg.version, payload)
         self._safe_publish(name, env)
 
