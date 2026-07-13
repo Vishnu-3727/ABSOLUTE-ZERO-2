@@ -12,6 +12,10 @@ invariants, and the concurrency stance. It builds directly on Phase 1 and
 introduces no scope not already declared there. No code, no APIs, no
 classes — architectural decisions only.
 
+**Revision note.** Amended in Phase 4 review (`RSM/04-validation-
+integration-review.md`): ADR-RSM-4 (§3) and invariants RSM-I15/RSM-I16 (§9)
+added. No prior decision in this document is reversed or weakened.
+
 ---
 
 ## 1. What Request State actually is
@@ -170,6 +174,48 @@ directly violates Phase 1 design goal 4 (reference over duplication) and the
 memory-hierarchy discipline that "runtime artifacts are committed but never
 indexed" twice, and creates two divergence-prone copies of the same body
 that must be kept consistent under replay.
+
+### ADR-RSM-4 — Reducers bind to Communication-owned versioned schemas
+
+**Context.** Phase 4's integration review (`RSM/04-validation-integration-
+review.md`, Finding F2) found that RSM's reducers do not merely consume event
+*names* — they read specific fields out of event payloads (e.g. the
+budget-grant field carried in `task.scheduled`, the cost field carried in
+`cost.recorded`). Nothing in this document as originally written said whose
+schema a reducer is entitled to assume when reading such a field. Left
+unstated, a reducer could come to depend on a specific publisher's internal
+payload shape rather than on a contract anyone owns and versions — hidden
+coupling to every publisher's internals, invisible until a publisher
+refactored and silently broke a reducer with no contract-level signal.
+
+**Decision.** Reducers bind only to Communication's owned, versioned message
+schema — the same schema `ARCHITECTURE.md`'s state-ownership table already
+assigns solely to Communication ("Event schema, topic/subscription
+registry"). A reducer may read a field only if that field is part of the
+published event's Communication-governed schema; it may never assume a
+publisher's internal representation beyond what that schema publishes.
+
+**Consequences.** A publisher is free to refactor its own internal plan,
+task, or cost representations at will, as long as the published event is
+unchanged — no coupling to internals survives the review. A schema version
+bump to a payload a reducer depends on is not silently absorbed: it requires
+an explicit reducer migration, paired with the existing `reducer_version`
+mechanism (§9 RSM-I3, RSM-I12; Phase 3 §12). This is additive discipline, not
+a new mechanism — it constrains which fields a reducer may already read, it
+does not change how reducers apply (§9 RSM-I2 pure-fold contract is
+unaffected).
+
+**Alternatives rejected.** Per-publisher schema contracts (RSM negotiating a
+bilateral contract with each of the eight-plus contributing subsystems) was
+rejected: it creates N couplings, one per publisher, exactly the pattern
+ADR-RSM-1 already rejected for the write path generally. Payload-agnostic,
+refs-only reducers (RSM storing only event ids and never reading payload
+fields at all) was rejected: it cannot materialize the Budget block (which
+requires reading a granted-amount field) or parts of the Failure block
+(which requires reading failure-family-specific fields) — Phase 2 §1 and
+Phase 3 §6–§7 already require reducers to read domain fields, so a
+payload-agnostic reducer cannot deliver the record shape this document
+already committed to.
 
 ---
 
@@ -401,6 +447,14 @@ not a patch.
 13. RSM contains zero planning, scheduling, verification, prompt, retrieval,
     learning, or execution logic.
 14. Every materialization and every eviction emits telemetry. No silent work.
+15. `state.updated` and `state.evicted` are telemetry only. No subsystem may
+    gate a control decision on them — a component that wants to act on a
+    request's state queries RSM's read surface directly. (Added Phase 4,
+    Finding F3.)
+16. Reducers bind only to Communication-owned, versioned event schemas —
+    never to a publisher's internal payload layout. A schema version bump
+    requires an explicit reducer migration. (Added Phase 4, Finding F2,
+    ADR-RSM-4.)
 
 ---
 
