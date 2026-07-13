@@ -71,7 +71,7 @@ Build spec for `src/cm/`. Sources of truth: this file + `COMPONENTS/context-mana
 | Section | Content |
 |---|---|
 | Objective | Spec → deterministic raw candidate set from UMS + RSM |
-| Responsibilities | Single-query-per-store gathering; provenance stamping; RSM block reads (identity/plan/constraints/budget via `rsm.query.block`/`snapshot`) |
+| Responsibilities | Single-query-per-store gathering; provenance stamping; RSM block reads (identity/plan/budget via `rsm.query.block`/`snapshot` -- RSM has no "constraints" block; see sources.py RSM_BLOCKS) |
 | Internal components | **sources** (UMS adapter, RSM adapter, knowledge/experience reference resolvers); fixture UMS bundle under `tests/fixtures/` |
 | Data produced | Candidate item = {id, section, content tiers, score, stale, provenance} |
 | Dependencies | Phase 1 spec; `src/ums/query.py`, `src/rsm/query.py` (read-only) |
@@ -169,3 +169,13 @@ Update flow: `index.updated{paths}` → cache scan for path overlap → invalida
 | Coding | Stdlib only; module-per-commit with selftest; `ponytail:` comments mark deliberate ceilings + upgrade paths; docstrings cite CM-I ids |
 | Testing | `tests/test_cm_phase<N>.py` per phase; run full suite before and after each phase; no redundant tests |
 | Process | Implement → test → fix → commit → push → stop; fresh conversation per phase; Fable medium = plan/review, Sonnet high = code |
+
+## Status
+
+| Phase | Status |
+|---|---|
+| 1 Foundation & artifact | Done |
+| 2 Sources | Done |
+| 3 Selection core | Done |
+| 4 Budget/assembly/validation | Done |
+| 5 Freshness/incremental/integration | Done -- CM complete, 15/15 modules, `tests/test_cm_phase1..5.py` green |

@@ -343,6 +343,8 @@ is the shared vocabulary referenced by all component specs.
 | `task.completed` | Scheduling | Kernel, Learning, Observability |
 | `task.failed` | Scheduling | Kernel, Capability Planning, Observability |
 | `context.assembled` | Context Management | Execution, Observability |
+| `context.overflow` | Context Management | Observability |
+| `context.invalidated` | Context Management | Observability |
 | `exec.started` | Execution | Observability |
 | `exec.completed` | Execution | Scheduling, Verification, Observability |
 | `exec.timeout` | Execution | Scheduling, Observability |
@@ -350,9 +352,9 @@ is the shared vocabulary referenced by all component specs.
 | `verify.requested` | Scheduling | Verification, Observability |
 | `verify.passed` | Verification | Scheduling, Kernel, Observability |
 | `verify.failed` | Verification | Scheduling, Capability Planning, Observability |
-| `memory.indexed` | Repository Memory | Observability, Learning |
-| `memory.queried` | Repository Memory | Observability |
-| `memory.updated` | Repository Memory | Context Management, Observability |
+| `repo.indexed` | Repository Memory | Observability, Learning |
+| `index.stale` | Repository Memory | Observability |
+| `index.updated` | Repository Memory | Context Management, Observability |
 | `repo.onboarded` | Lifecycle | Repository Memory, Observability |
 | `repo.offboarded` | Lifecycle | Repository Memory, Storage, Observability |
 | `plugin.discovered` | Plugin Runtime | Lifecycle, Observability |
@@ -424,10 +426,10 @@ Repository Memory owns the index; Lifecycle owns transition legality.
 stateDiagram-v2
     [*] --> Discovered
     Discovered --> Onboarding: repo.onboarded
-    Onboarding --> Indexed: memory.indexed
+    Onboarding --> Indexed: repo.indexed
     Indexed --> Managed: index complete
     Managed --> Reindexing: source change detected
-    Reindexing --> Managed: memory.updated
+    Reindexing --> Managed: index.updated
     Managed --> Offboarding: repo.offboarded
     Offboarding --> [*]
     Onboarding --> Failed: index error (fault.recorded)
