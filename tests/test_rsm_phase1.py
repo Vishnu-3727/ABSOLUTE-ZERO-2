@@ -28,6 +28,16 @@ _TERMINAL_LIKE = (TERMINAL, PERSISTED, RETAINED)
 UNREGISTERED_FAMILY = "memory.indexed"  # real family, but no RSM reducer (RSM/03 §4)
 
 
+def _terminate(store, request_id, lifecycle_update):
+    """M2 replaced store.mark_terminal(lifecycle_update) with reducer
+    dispatch (RSM/05 M2) — store.apply_terminal now takes the full
+    post-reducer record. This test helper plays the terminal reducer's
+    role (record.evolve(lifecycle=...)) so M1's store-level coverage keeps
+    testing the same store behavior under the new API."""
+    rec = store.get(request_id)
+    return store.apply_terminal(request_id, rec.evolve(lifecycle=dict(lifecycle_update)))
+
+
 class RecordTests(unittest.TestCase):
     def test_birth_snapshot(self):
         rec = record_mod.birth("r1", {"declared_type": "type.alpha"})
@@ -202,7 +212,7 @@ class StoreBirthTerminalTests(unittest.TestCase):
         rec = store.create("r1", {})
         row = lookup(store.state_of("r1"), "request.completed")
         self.assertEqual(row, Row(APPLY_TERMINAL, TERMINAL))
-        term = store.mark_terminal("r1", {"state": "completed"})
+        term = _terminate(store, "r1", {"state": "completed"})
         self.assertEqual(store.state_of("r1"), TERMINAL)
         self.assertEqual(term.version, rec.version + 1)
         self.assertEqual(term.lifecycle, {"state": "completed"})
@@ -212,18 +222,18 @@ class StoreBirthTerminalTests(unittest.TestCase):
     def test_mark_terminal_on_non_active_raises(self):
         store = Store()
         with self.assertRaises(ValueError):
-            store.mark_terminal("ghost", {})
+            store.apply_terminal("ghost", None)  # state check precedes record use
         store.create("r1", {})
-        store.mark_terminal("r1", {"state": "completed"})
+        _terminate(store, "r1", {"state": "completed"})
         with self.assertRaises(ValueError):
-            store.mark_terminal("r1", {"state": "completed"})  # already terminal
+            _terminate(store, "r1", {"state": "completed"})  # already terminal
 
     def test_evict_gate_stub_never_permits_in_m1(self):
         # ponytail-marked stub: persistence (M4) doesn't exist yet, so the
         # "journal persisted" precondition can never be satisfied here.
         store = Store()
         store.create("r1", {})
-        store.mark_terminal("r1", {"state": "completed"})
+        _terminate(store, "r1", {"state": "completed"})
         self.assertFalse(store.evict_gate("r1"))
 
 
@@ -240,7 +250,7 @@ class InvariantSpotChecksTests(unittest.TestCase):
     def test_rsm_i9_reader_snapshot_never_torn_by_later_mutation(self):
         store = Store()
         held = store.create("r1", {"declared_type": "a"})
-        store.mark_terminal("r1", {"state": "completed"})
+        _terminate(store, "r1", {"state": "completed"})
         # a reference taken before the mutation is provably unaffected
         self.assertEqual(held.version, 0)
         self.assertEqual(held.lifecycle, {})

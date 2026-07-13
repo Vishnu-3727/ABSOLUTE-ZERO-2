@@ -59,21 +59,38 @@ class Store:
         self._state[request_id] = ACTIVE
         return rec
 
-    # -- terminal path -------------------------------------------------------
-    def mark_terminal(self, request_id, lifecycle_update):
+    # -- contributing-family apply (M2) --------------------------------------
+    def apply(self, request_id, new_record):
+        """active -> active, or terminal/persisted/retained -> unchanged
+        (late-tolerant family, RSM/03 §3). `new_record` is already the full
+        post-reducer snapshot (`ingest` computed it via `reducers`) — store
+        only swaps the pointer in whichever bucket currently holds this id.
+        No materialization-state change; the caller (`ingest`) already
+        resolved that from the transition-table row.
+        """
+        if request_id in self._active:
+            self._active[request_id] = new_record
+        elif request_id in self._retained:
+            self._retained[request_id] = new_record
+        else:
+            raise ValueError("store.not_found:" + request_id)
+        return new_record
+
+    # -- terminal path (M2: reducer-dispatched) ------------------------------
+    def apply_terminal(self, request_id, new_record):
         """active -> terminal (RSM/03 §2/§3, row "active | terminal family").
 
-        `lifecycle_update` is the Lifecycle-block fields a terminal reducer
-        would set; M1 has no reducer registry yet (that lands in M2), so
-        this one hardcoded path plays the reducer's role for the birth/
-        terminal wiring M1 requires.
+        `new_record` is the full post-reducer snapshot (Lifecycle block
+        already updated by the terminal reducer in `reducers`) — store only
+        performs the state-machine move and pointer swap. Replaces M1's
+        hardcoded `mark_terminal(lifecycle_update)` path now that M2's
+        reducer registry exists (RSM/05-implementation-spec.md M2).
         """
         if self.state_of(request_id) != ACTIVE:
             raise ValueError("store.not_active:" + request_id)
-        rec = self._active[request_id].evolve(lifecycle=dict(lifecycle_update))
-        self._active[request_id] = rec
+        self._active[request_id] = new_record
         self._state[request_id] = TERMINAL
-        return rec
+        return new_record
 
     # -- eviction gate (M4 stub) ---------------------------------------------
     def evict_gate(self, request_id):
@@ -103,13 +120,13 @@ if __name__ == "__main__":
     except ValueError:
         pass
 
-    term = store.mark_terminal("r1", {"state": "completed"})
+    term = store.apply_terminal("r1", rec.evolve(lifecycle={"state": "completed"}))
     assert store.state_of("r1") == TERMINAL
     assert term.version == 1 and term.lifecycle == {"state": "completed"}
     assert store.get("r1") is term
 
     try:
-        store.mark_terminal("r1", {"state": "completed"})
+        store.apply_terminal("r1", term.evolve(lifecycle={"state": "completed"}))
         raise SystemExit("terminal-from-terminal allowed")
     except ValueError:
         pass
@@ -118,7 +135,7 @@ if __name__ == "__main__":
 
     store2 = Store()
     try:
-        store2.mark_terminal("never-born", {})
+        store2.apply_terminal("never-born", None)
         raise SystemExit("terminal on absent id allowed")
     except ValueError:
         pass
