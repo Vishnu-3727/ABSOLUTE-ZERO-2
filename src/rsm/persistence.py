@@ -147,6 +147,13 @@ def read_checkpoint(storage, request_id, seq=None):
     return json.loads(storage.read(_checkpoint_key(request_id, seq)))
 
 
+def record_from_checkpoint(doc):
+    """Reconstruct the `RequestRecord` a checkpoint document's `record`
+    field encodes — public so callers (checkpoint-prefix-correctness tests,
+    RSM/05 M4) never need the private dict<->record conversion helpers."""
+    return _dict_to_record(doc["record"])
+
+
 def maybe_checkpoint(storage, journal, store, request_id, checkpoint_n):
     """Every N applied events (`config_view.checkpoint_n`, RSM/03 §11).
     Caller invokes this once per applied event (e.g. after `ingest.process`
@@ -257,5 +264,6 @@ if __name__ == "__main__":
 
     cp0 = read_checkpoint(storage, "r2", seq=1)
     assert cp0["seq"] == 1 and len(cp0["journal_prefix"]) == 2
+    assert record_from_checkpoint(cp0).budget == {"consumed": 1}
 
     print("persistence selftest ok")
