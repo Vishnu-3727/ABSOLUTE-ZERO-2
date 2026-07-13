@@ -135,7 +135,7 @@ Every subsystem replaceable without redesigning neighbors. For CP this cuts both
 |---|---|
 | Kernel → CP | Admitted requests arrive as events; CP plans only admitted work |
 | CM → CP | Knowledge for planning arrives as Request Memory; CP requests context by objective + budget, consumes the artifact, never the repository |
-| UMS ↔ CP | Direct query API is CM's concern; CP touches UMS only where the frozen spec permits registry-independent knowledge lookups via declared query surfaces — never scanning, never similarity |
+| UMS ↔ CP | Direct query API is CM's concern; CP touches UMS only where the frozen spec permits registry-independent knowledge lookups via declared query surfaces — never scanning, never similarity. **Amended by CP/03 §4 (architecture decision, 2026-07-13): the door is closed — CP never queries UMS directly; CM is CP's sole knowledge gateway** |
 | RSM ↔ CP | Read-only visibility of request state; CP output is mirrored into RSM by events, CP never writes state |
 | Plugin Runtime → CP | Capability registry is read as data; reliability/health arrive as events; CP never mutates the registry |
 | Experience → CP | Priors arrive as versioned data via events; CP treats them as input, never produces them |
