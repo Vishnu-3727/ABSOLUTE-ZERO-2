@@ -6,10 +6,23 @@ request id across both maps (RSM-I1) — enforced structurally: creating a
 duplicate id raises, mirroring kernel ledger.py's `_create`.
 
 M1 wires only the birth and terminal paths (RSM/05-implementation-spec.md
-M1). Reducer-driven contributing-family updates, persistence, retention and
-real eviction are later milestones; `evict_gate` below is an honest stub for
-M4 (see its docstring). `mark_evicted` is the direct marker M3's `query`
-module needs to exercise the evicted-id read path ahead of M4's real gate.
+M1). `mark_persisted` and the real `evict_gate` land here in M4 (terminal ->
+persisted, RSM/03 §2, driving `mark_evicted` per RSM-I11's three
+preconditions). `mark_evicted` itself is unchanged from M3 — it stays the
+one place the evicted-id bookkeeping move happens; `evict_gate` is now its
+real caller instead of a test-only direct marker.
+
+# ponytail: the state diagram (RSM/03 §2) has an intermediate `retained`
+# state ("persisted -> retention window opens -> retained -> retention
+# window elapses -> evicted") between `persisted` and `evicted`. Nothing in
+# RSM/03 gives "retention window opens" its own trigger distinct from the
+# persist moment itself, so this module folds the two: `persisted_at` is
+# both "durably written" and "retention window start," and `state_of`
+# reports `persisted` for the whole window rather than a separate
+# `retained` label. Ceiling: `query.status()` never returns "retained".
+# Upgrade path: if a real distinct "window opens" trigger ever exists, add
+# `mark_retained` and a RETAINED entry in `_state`, gated on that trigger,
+# without touching `evict_gate`'s three-precondition logic below.
 """
 from . import record as record_mod
 from . import transitions
@@ -30,6 +43,10 @@ class Store:
         # ponytail: membership-only, unbounded — M4's real eviction will
         # replace this with whatever bounded record real eviction needs.
         self._evicted_ids = set()
+        # request_id -> clock() value at mark_persisted time (M4). Doubles
+        # as "is this id persisted" membership check and as the retention
+        # window's start time for evict_gate's third precondition.
+        self._persisted_at = {}
 
     # -- read side (anyone) ------------------------------------------------
     def state_of(self, request_id):
@@ -93,35 +110,74 @@ class Store:
         self._state[request_id] = TERMINAL
         return new_record
 
+    # -- persistence (M4) ----------------------------------------------------
+    def mark_persisted(self, request_id, clock):
+        """terminal -> persisted (RSM/03 §2), once `persistence.
+        persist_terminal` has durably written the journal index + terminal
+        snapshot via Storage. `clock` is a zero-arg callable returning a
+        number (injectable, no wall-clock reads here) — its value at this
+        moment becomes the retention window's start time for `evict_gate`.
+        Precondition: currently TERMINAL, same not-the-right-state-raises
+        style as `apply_terminal`'s ACTIVE-only guard."""
+        if self.state_of(request_id) != TERMINAL:
+            raise ValueError("store.not_terminal:" + request_id)
+        self._state[request_id] = PERSISTED
+        self._persisted_at[request_id] = clock()
+
     # -- eviction marking (M3: query needs a real evicted id to answer
     # against; M4: real three-precondition-gated eviction) ------------------
     def mark_evicted(self, request_id):
         """Move a record out of active/retained into the evicted-id set.
 
-        # ponytail: no precondition check — matches `evict_gate`'s existing
-        # honesty (it always answers False, since persistence/retention
-        # don't exist yet). M4 wires `evict_gate` as the real gate driving
-        # this call automatically; until then this is the direct marker
-        # M3's `query` module tests need to exercise the evicted-id read
-        # path (RSM/03 §2 "evicted ... queries answer 'evicted'").
+        # ponytail: no precondition check of its own — `evict_gate` (below)
+        # is now the real, precondition-checked caller (M4); this method's
+        # own semantics are unchanged from M3, where it was also the direct
+        # marker M3's `query` tests used to exercise the evicted-id read
+        # path (RSM/03 §2 "evicted ... queries answer 'evicted'"). Kept
+        # argument-free and unconditional so both callers (tests, and
+        # `evict_gate`) share one code path with no drift between them.
         """
         self._active.pop(request_id, None)
         self._retained.pop(request_id, None)
         self._state.pop(request_id, None)
+        self._persisted_at.pop(request_id, None)
         self._evicted_ids.add(request_id)
 
-    # -- eviction gate (M4 stub) ---------------------------------------------
-    def evict_gate(self, request_id):
+    # -- eviction gate (M4) ---------------------------------------------------
+    def evict_gate(self, request_id, clock, retention_window):
         """RSM-I11: eviction requires all three preconditions — terminal,
-        journal persisted, retention elapsed.
+        journal persisted, retention elapsed. `clock` is a zero-arg callable
+        (injectable time source); `retention_window` is the caller-supplied
+        number (read from `config_view`'s `retention_window` upstream —
+        `store` holds no config dependency of its own, same shape as
+        `apply()` already receiving an already-computed `new_record`).
 
-        # ponytail: honest stub. `persistence` (M4) and `config_view` (M4,
-        # retention window) don't exist yet in M1/M1-adjacent code, so
-        # "persisted" can never be true here — this always answers False.
-        # Upgrade path: RSM/05-implementation-spec.md M4 wires the real
-        # three-precondition check and this becomes a real gate.
+        Drives `mark_evicted` when all three hold; otherwise a no-op,
+        returning False. Returns True exactly when eviction just happened.
         """
+        state = self.state_of(request_id)
+        terminal = state in (TERMINAL, PERSISTED, RETAINED)
+        persisted_at = self._persisted_at.get(request_id)
+        persisted = persisted_at is not None
+        retention_elapsed = persisted and (clock() - persisted_at) >= retention_window
+        if eviction_allowed(terminal, persisted, retention_elapsed):
+            self.mark_evicted(request_id)
+            return True
         return False
+
+
+def eviction_allowed(terminal, persisted, retention_elapsed):
+    """RSM-I11's three-precondition predicate, kept as a pure free function
+    deliberately separate from `evict_gate`'s store plumbing: `evict_gate`
+    only ever observes combinations the store's own transition coupling can
+    reach (e.g. `persisted` implies `terminal` already happened), but the
+    M4 property test (RSM/05-implementation-spec.md M4: "all 2^3 - 1
+    partial-precondition combinations, each must NOT evict") needs to drive
+    every combination directly, including ones the real state machine can
+    never produce. Testing the predicate in isolation is how that coverage
+    is achieved without forcing `Store` into unreachable internal states.
+    """
+    return bool(terminal and persisted and retention_elapsed)
 
 
 if __name__ == "__main__":
@@ -149,12 +205,39 @@ if __name__ == "__main__":
     except ValueError:
         pass
 
-    assert store.evict_gate("r1") is False  # M4 stub
+    clock_box = [100]
+    clock = lambda: clock_box[0]  # noqa: E731 — injectable time source, test-local
 
-    store.mark_evicted("r1")
+    # not yet persisted: gate refuses regardless of elapsed time
+    assert store.evict_gate("r1", clock, retention_window=0) is False
+    assert store.state_of("r1") == TERMINAL
+
+    store.mark_persisted("r1", clock)
+    assert store.state_of("r1") == PERSISTED
+
+    try:
+        store.mark_persisted("r1", clock)  # not TERMINAL anymore
+        raise SystemExit("re-persist from persisted allowed")
+    except ValueError:
+        pass
+
+    # persisted, but retention window has not elapsed yet
+    assert store.evict_gate("r1", clock, retention_window=50) is False
+    assert store.state_of("r1") == PERSISTED
+
+    # retention elapses -> gate fires and drives mark_evicted
+    clock_box[0] += 50
+    assert store.evict_gate("r1", clock, retention_window=50) is True
     assert store.state_of("r1") == EVICTED
     assert store.get("r1") is None
     assert "r1" not in store  # falls out of _state, membership goes through evicted set only
+
+    # eviction_allowed: pure predicate, all 2^3-1 partial combos False, all-True True
+    for terminal in (False, True):
+        for persisted in (False, True):
+            for retention_elapsed in (False, True):
+                expect = terminal and persisted and retention_elapsed
+                assert eviction_allowed(terminal, persisted, retention_elapsed) is expect
 
     store2 = Store()
     try:

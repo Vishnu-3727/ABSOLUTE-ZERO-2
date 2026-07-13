@@ -228,13 +228,16 @@ class StoreBirthTerminalTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             _terminate(store, "r1", {"state": "completed"})  # already terminal
 
-    def test_evict_gate_stub_never_permits_in_m1(self):
-        # ponytail-marked stub: persistence (M4) doesn't exist yet, so the
-        # "journal persisted" precondition can never be satisfied here.
+    def test_evict_gate_refuses_before_persisted_m4(self):
+        # M4 wired evict_gate to the real three-precondition gate
+        # (RSM/05-implementation-spec.md M4; see tests/test_rsm_phase4.py
+        # for the full property-test coverage). This module's own
+        # concern is just: terminal alone (no persistence yet) never
+        # evicts, regardless of the clock/retention_window passed in.
         store = Store()
         store.create("r1", {})
         _terminate(store, "r1", {"state": "completed"})
-        self.assertFalse(store.evict_gate("r1"))
+        self.assertFalse(store.evict_gate("r1", clock=lambda: 0, retention_window=0))
 
 
 class InvariantSpotChecksTests(unittest.TestCase):
