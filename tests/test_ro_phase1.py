@@ -29,6 +29,7 @@ from ro.records import (
 )
 from ro.descriptor_space import (
     CategoryFrozenError,
+    ClaimedCapabilityRetirementError,
     DependencyCycleError,
     DescriptorClaimError,
     DescriptorSpace,
@@ -379,6 +380,25 @@ class DescriptorRowCase(unittest.TestCase):
         space = DescriptorSpace()
         with self.assertRaises(NotFoundError):
             space.apply({"kind": "remove_descriptor_row", "provider_id": "ro.provider.ghost"})
+
+    def test_retirement_refused_while_descriptor_rows_claim_capability(self):
+        # RO/03 §3: claims resolve to active-or-deprecated only. Retirement
+        # with live claims would create a state add_descriptor_row itself
+        # refuses — the space must never reach it by mutation order.
+        space = _active_space_with("ro.cap.a")
+        row = _row("ro.provider.x", {"ro.cap.a": ("C1",)})
+        space.apply({"kind": "add_descriptor_row", "record": row})
+        version_before = space.current_version
+        with self.assertRaises(ClaimedCapabilityRetirementError):
+            space.apply({"kind": "transition_capability_lifecycle",
+                         "id": "ro.cap.a", "to_state": "retired"})
+        self.assertEqual(space.current_version, version_before)
+        self.assertEqual(space.get_capability("ro.cap.a").lifecycle, "active")
+        # removing the claimant unblocks retirement
+        space.apply({"kind": "remove_descriptor_row", "provider_id": "ro.provider.x"})
+        space.apply({"kind": "transition_capability_lifecycle",
+                     "id": "ro.cap.a", "to_state": "retired"})
+        self.assertEqual(space.get_capability("ro.cap.a").lifecycle, "retired")
 
 
 class VersioningCase(unittest.TestCase):

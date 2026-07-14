@@ -77,6 +77,15 @@ class DescriptorClaimError(RecoverableRefusal):
     active-or-deprecated (RO/03 §3 cross-reference)."""
 
 
+class ClaimedCapabilityRetirementError(RecoverableRefusal):
+    """A capability cannot retire while descriptor rows still claim it —
+    otherwise the space would hold rows claiming a retired capability, a
+    state its own admission rule (RO/03 §3: claims resolve to
+    active-or-deprecated only) refuses to create. Remove or update the
+    claiming rows first. Mirror image of PRT's binding-removal-at-retirement
+    discipline (PRT-A11)."""
+
+
 class NotFoundError(RecoverableRefusal):
     """Mutation targets a capability/relationship/descriptor row that doesn't exist."""
 
@@ -265,6 +274,14 @@ def _handle_transition_capability_lifecycle(working, mutation):
     if existing is None:
         raise NotFoundError("descriptor_space.capability_not_found:" + entity_id)
     _check_forward(existing.lifecycle, to_state, entity_id)
+    if to_state == "retired":
+        claimants = sorted(
+            provider_id for provider_id, row in working.descriptor_rows.items()
+            if entity_id in row.capabilities_claimed)
+        if claimants:
+            raise ClaimedCapabilityRetirementError(
+                "descriptor_space.retirement_while_claimed:" + entity_id +
+                ":claimants=" + ",".join(claimants))
     working.capabilities[entity_id] = replace(existing, lifecycle=to_state)
 
 
@@ -522,6 +539,18 @@ if __name__ == "__main__":
     # re-adding a descriptor row after removal is NOT a tombstone violation
     space.apply({"kind": "add_descriptor_row", "record": row_ok})
     assert space.get_descriptor_row("ro.provider.z") is not None
+
+    # retirement refused while a descriptor row still claims the capability
+    try:
+        space.apply({"kind": "transition_capability_lifecycle",
+                      "id": "ro.cap.a", "to_state": "retired"})
+        raise SystemExit("retirement while claimed accepted")
+    except ClaimedCapabilityRetirementError:
+        pass
+    space.apply({"kind": "remove_descriptor_row", "provider_id": "ro.provider.z"})
+    space.apply({"kind": "transition_capability_lifecycle",
+                 "id": "ro.cap.a", "to_state": "retired"})
+    assert space.get_capability("ro.cap.a").lifecycle == "retired"
 
     # determinism: two independently built spaces, same mutation sequence
     # -> identical content hashes at every version

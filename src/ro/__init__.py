@@ -45,6 +45,7 @@ from .descriptor_space import (  # noqa: F401
     RelationshipEndpointError,
     DependencyCycleError,
     DescriptorClaimError,
+    ClaimedCapabilityRetirementError,
     NotFoundError,
     UnknownMutationError,
 )
