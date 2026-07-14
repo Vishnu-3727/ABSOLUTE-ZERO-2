@@ -72,6 +72,10 @@ identical scores (Law 6). Healing/decay smoothing prevents quarantine flapping. 
 threshold crossing → registry effect + events; recovery path always exists (no permanent
 blacklist). Score movement rules are Phase-4 design; the *ownership split above is fixed now*.
 
+> **Errata (Phase 4):** "registry effect" above is imprecise — quarantine is an operational
+> availability state, never a registry mutation and never a version mint (PRT-B8, PRT-H3;
+> clarified in PRT/04 §7). The registry-mutating removal path is forced retirement (PRT/02 §8).
+
 ## 6. Inherited constraints (C1–C10)
 
 | # | Constraint | Source |
