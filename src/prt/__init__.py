@@ -23,6 +23,13 @@ ladder as an eligibility predicate only (`availability`, PRT/03 §6,
 PRT-B11), deterministic late binding and the immutable Binding Contract
 (`binding`, PRT/03 §3/§7, PRT-B1..B7/B12), and declared load policy plus
 the runtime-only load lifecycle (`load_policy`, PRT/03 §5/§9, PRT-B8/B9).
+
+Phase 4: health & reliability (PRT/04) — the append-only evidence journal
+of closed input classes (`evidence`, PRT/04 §4/§8, PRT-H6/H9), the
+deterministic HealthManager fold that now PRODUCES the HealthSnapshot
+Phase 3 only consumed (`health`, PRT/04 §3/§6/§7, PRT-H1/H2/H5/H7/H11),
+and the one-directional Learning->PRT reliability seam
+(`reliability_bridge`, PRT/04 §4/§9, PRT-H10).
 """
 from . import events  # noqa: F401
 from .bus_double import BusDouble  # noqa: F401
@@ -89,4 +96,15 @@ from .load_policy import (  # noqa: F401
     LoadStateTracker,
     AllowAllLegality,
     prerequisites_bound,
+)
+from .evidence import EvidenceJournal  # noqa: F401
+from .health import (  # noqa: F401
+    STATES as HEALTH_STATES,
+    DEFAULT_THRESHOLDS as HEALTH_DEFAULT_THRESHOLDS,
+    HealthManager,
+    fold_provider as fold_health,
+)
+from .reliability_bridge import (  # noqa: F401
+    consume_reliability_update,
+    drain_reliability_updates,
 )
