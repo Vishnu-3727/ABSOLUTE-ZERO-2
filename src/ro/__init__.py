@@ -8,6 +8,12 @@ capability/relationship/descriptor-row records with closed-set validation
 (`descriptor_space`), and policy as data (`config_view`). Zero imports from
 src/prt anywhere in this package — RO's descriptor space is its own
 authority, disjoint from PRT's registry (RO-I9).
+
+Phase 2: the necessity gate (RO/02) — sealed decision inputs (`demand`),
+governance policy as data (`policy_view`), and the pure `decide()` gate
+producing one of five closed outcomes (`decision_gate`). Never imports
+DescriptorRow (RO-D3) — provider identity/availability is structurally
+invisible to the gate.
 """
 from .config_view import ConfigView, DEFAULT as DEFAULT_CONFIG  # noqa: F401
 from .records import (  # noqa: F401
@@ -48,4 +54,25 @@ from .descriptor_space import (  # noqa: F401
     ClaimedCapabilityRetirementError,
     NotFoundError,
     UnknownMutationError,
+)
+from .demand import (  # noqa: F401
+    RUNGS as LADDER_RUNGS,
+    LADDER_STATUSES,
+    DemandArtifact,
+    LadderEvidence,
+    SealedInputs,
+    build_demand,
+    build_ladder_evidence,
+    build_sealed_inputs,
+    canonical as canonical_demand,
+    content_hash as demand_content_hash,
+    ladder_evidence_hash,
+)
+from .policy_view import PolicyView, build_policy_view  # noqa: F401
+from .decision_gate import (  # noqa: F401
+    OUTCOMES,
+    DecisionRecord,
+    decide,
+    canonical as canonical_decision,
+    content_hash as decision_content_hash,
 )
