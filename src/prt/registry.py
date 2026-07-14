@@ -150,6 +150,21 @@ class _ReadSurface:
     def relationships(self):
         return list(self._relationships)
 
+    # -- Phase 5 additive enumeration (persistence.py's replay source) ------
+    # ponytail: no existing read method enumerates ALL entries (the indexes
+    # are keyed by category/facet/capability/provider, never "everything").
+    # persistence.py needs exactly this to serialize current content; these
+    # three are pure additions -- no existing method's behavior changes.
+
+    def all_capabilities(self):
+        return list(self._capabilities.values())
+
+    def all_providers(self):
+        return list(self._providers.values())
+
+    def all_bindings(self):
+        return list(self._bindings.values())
+
 
 def _build_category_index(capabilities):
     index = {}
