@@ -395,7 +395,6 @@ if __name__ == "__main__":
     assert c7.state == "VALIDATED"
     assert reg7.current_version == 0
     store7.fail_writes = False
-    c7_retried = admit_retry = None
     # retry: re-run admit() with storage healed -- PRT/02 §9's retryable path.
     # This phase re-drives the same declaration through admit() again (a
     # fresh Candidacy) since Candidacy.admit()/mark_publication_failed()
