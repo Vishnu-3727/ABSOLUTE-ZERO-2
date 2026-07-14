@@ -16,6 +16,13 @@ tracker (`candidacy`, PRT/02 §2), the nine-stage admission pipeline over
 registry.py's `admit_bundle`/`dry_run` extensions (`admission`, PRT/02 §3,
 §7 persist-before-commit), and Lifecycle-enacted retirement (`retirement`,
 PRT-A4/PRT-A11).
+
+Phase 3: binding & load policy (PRT/03) — the opaque health-state
+coordinate binding consumes (`health_view`, PRT/03 §2), the availability
+ladder as an eligibility predicate only (`availability`, PRT/03 §6,
+PRT-B11), deterministic late binding and the immutable Binding Contract
+(`binding`, PRT/03 §3/§7, PRT-B1..B7/B12), and declared load policy plus
+the runtime-only load lifecycle (`load_policy`, PRT/03 §5/§9, PRT-B8/B9).
 """
 from . import events  # noqa: F401
 from .bus_double import BusDouble  # noqa: F401
@@ -68,3 +75,18 @@ from .admission import (  # noqa: F401
     admit,
 )
 from .retirement import enact_lifecycle_event  # noqa: F401
+from .health_view import HealthSnapshot  # noqa: F401
+from . import availability  # noqa: F401
+from .binding import (  # noqa: F401
+    BindingContract,
+    BindingFailure,
+    resolve as resolve_binding,
+    explain as explain_binding,
+)
+from .load_policy import (  # noqa: F401
+    LOAD_STATES,
+    LoadPolicyView,
+    LoadStateTracker,
+    AllowAllLegality,
+    prerequisites_bound,
+)
