@@ -22,12 +22,14 @@ evidence outstanding, §3's own table). RETIRED is a registry fact (PRT/02
 # still reduces to the same threshold-config shape.
 """
 from . import events
+from . import lifecycle_legality
 from .health_view import HealthSnapshot
-from .load_policy import AllowAllLegality  # noqa: F401  (re-exported: same
-# generic decide-legalize-enact placeholder Phase 3 uses for load-lifecycle
-# legality — Lifecycle's real transition-legality machine (PRT-A4) doesn't
-# exist yet in either phase, so one double serves both callers rather than
-# inventing a second identical stand-in (ponytail: reuse, don't duplicate).
+from .load_policy import AllowAllLegality  # noqa: F401  (re-exported: PRT/05's
+# boundary ruling keeps this as an explicit TEST FIXTURE only — a caller may
+# still inject it deliberately (e.g. to assert "every call is recorded,
+# nothing refused"); it is no longer this module's own default (see
+# lifecycle_legality.default_health_legality() below, the real Lifecycle-
+# contract adapter Phase 5 wires in as the default instead).
 
 STATES = ("HEALTHY", "DEGRADED", "UNAVAILABLE", "QUARANTINED", "RECOVERING", "RECOVERED")
 
@@ -128,7 +130,7 @@ def fold_provider(entries, thresholds=None, legality=None, provider_id=None):
     No journal, no manager, no cache — exactly the function the invariant
     names."""
     thresholds = dict(DEFAULT_THRESHOLDS) if thresholds is None else thresholds
-    legality = legality or AllowAllLegality()
+    legality = legality or lifecycle_legality.default_health_legality()
     carry = _initial_carry()
     for entry in entries:
         carry = _step(carry, entry, thresholds, legality, provider_id)
@@ -146,7 +148,7 @@ class HealthManager:
         self._thresholds = dict(DEFAULT_THRESHOLDS)
         if thresholds:
             self._thresholds.update(thresholds)
-        self._legality = legality or AllowAllLegality()
+        self._legality = legality or lifecycle_legality.default_health_legality()
         self._bus = bus
         self._cache = {}
         self._folded = {}  # provider_id -> count of entries already folded in
