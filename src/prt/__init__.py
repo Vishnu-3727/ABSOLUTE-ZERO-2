@@ -8,6 +8,14 @@ registry authority with its one `apply()` admission entry point and
 versioned historical snapshots (`registry`), the closed publish/consume
 event vocabulary with dead-vocabulary rejection (`events`), policy as data
 (`config_view`), and PRT's own bus/storage test doubles.
+
+Phase 2: discovery & admission (PRT/02) — the immutable Declaration bundle
+(`declarations`), discovery sources that produce Declarations without ever
+touching the registry (`discovery`, PRT-A1), the Candidacy pipeline-state
+tracker (`candidacy`, PRT/02 §2), the nine-stage admission pipeline over
+registry.py's `admit_bundle`/`dry_run` extensions (`admission`, PRT/02 §3,
+§7 persist-before-commit), and Lifecycle-enacted retirement (`retirement`,
+PRT-A4/PRT-A11).
 """
 from . import events  # noqa: F401
 from .bus_double import BusDouble  # noqa: F401
@@ -36,6 +44,7 @@ from .registry import (  # noqa: F401
     DuplicateIdError,
     TombstoneReuseError,
     AliasResolutionError,
+    AliasTargetRetirementError,
     RelationshipEndpointError,
     BindingConsistencyError,
     LifecycleTransitionError,
@@ -43,3 +52,19 @@ from .registry import (  # noqa: F401
     NotFoundError,
     UnknownMutationError,
 )
+from .declarations import (  # noqa: F401
+    SOURCE_CLASSES,
+    Declaration,
+    build_declaration,
+)
+from .discovery import FixtureSource, discover  # noqa: F401
+from .candidacy import STATES as CANDIDACY_STATES, Candidacy, CandidacyError  # noqa: F401
+from .admission import (  # noqa: F401
+    IdentityMalformedError,
+    SemanticHijackError,
+    CapabilityReferenceError,
+    ConstraintIncoherenceError,
+    CompatibilityConflictError,
+    admit,
+)
+from .retirement import enact_lifecycle_event  # noqa: F401
