@@ -85,3 +85,29 @@ gracefully instead of silently corrupting decisions.
 - Reliability scores heal over time and drive quarantine, not one-shot blacklists.
 - Plugin execution always routes through Execution.
 - All published events consumed by Observability; all consumed events have a named publisher.
+
+## Errata (PRT Phase 5, integration)
+
+This spec predates PRT/00-05 (`PRT/00-architectural-foundation.md` through
+`PRT/05-system-integration.md`), which resolved event-canon drift found between this document and
+`ARCHITECTURE.md`. Corrections, spec body left otherwise unchanged:
+
+- **(a) Published events canon** — `plugin.discovered`, `plugin.registered`, `plugin.loaded`,
+  `plugin.unloaded`, `plugin.health.changed`. `plugin.disabled` never existed in this spec's
+  Published list (see above) — it was matrix-side drift only, and is now dead vocabulary; the fact
+  it named (barred from eligibility) is exactly what `plugin.health.changed` already announces
+  (PRT/05 §4).
+- **(b) Events Consumed** — `process.failed`/`process.timeout` above are stale draft vocabulary;
+  the canonical, Execution-published names are `exec.failed`/`exec.timeout` (PRT/00 §7 D2, PRT/05
+  §4). PRT consumes `exec.*` as health evidence, nothing else.
+- **(c) Registry contents** — the capability registry additionally carries CP/01's full capability
+  metadata (category, facets, lifecycle state, aliases, relationships, verification expectations),
+  per `PRT/00-architectural-foundation.md` §3 and `PRT/01-registry-model.md`. Not limited to
+  "declared capabilities → plugin bindings, versions" as originally worded above.
+- **(d) Quarantine** — an operational state (Unavailable availability rung), never a registry
+  mutation and never a version mint (`PRT/00-architectural-foundation.md` §5 errata,
+  `PRT/04-health-reliability.md` §7, PRT-H3). The Failure Modes entry above ("triggers quarantine")
+  describes an operational-state transition, not a registry write.
+- **(e)** `PRT/00-architectural-foundation.md` through `PRT/05-system-integration.md` are the
+  authoritative subsystem architecture for Plugin Runtime; this document is the frozen component
+  spec they build within and correct where drifted.

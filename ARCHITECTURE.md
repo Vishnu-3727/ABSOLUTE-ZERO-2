@@ -358,10 +358,11 @@ is the shared vocabulary referenced by all component specs.
 | `repo.onboarded` | Lifecycle | Repository Memory, Observability |
 | `repo.offboarded` | Lifecycle | Repository Memory, Storage, Observability |
 | `plugin.discovered` | Plugin Runtime | Lifecycle, Observability |
-| `plugin.registered` | Plugin Runtime | Capability Planning, Observability |
+| `plugin.registered` | Plugin Runtime | Capability Planning, Lifecycle, Observability |
 | `plugin.loaded` | Plugin Runtime | Execution, Observability |
-| `plugin.disabled` | Plugin Runtime | Scheduling, Capability Planning, Observability |
-| `plugin.health.changed` | Plugin Runtime | Scheduling, Observability |
+| `plugin.unloaded` | Plugin Runtime | Scheduling, Observability |
+| `plugin.health.changed` | Plugin Runtime | Scheduling, Capability Planning, Observability |
+| `plugin.lifecycle.changed` | Lifecycle | Plugin Runtime, Observability |
 | `reliability.updated` | Learning | Plugin Runtime, Capability Planning, Observability |
 | `lesson.learned` | Learning | Capability Planning, Observability |
 | `fault.recorded` | Any (via Communication) | Observability, Learning |
@@ -450,8 +451,8 @@ stateDiagram-v2
     Loaded --> Active: health OK
     Active --> Degraded: plugin.health.changed
     Degraded --> Active: reliability.updated (healed)
-    Degraded --> Disabled: plugin.disabled
-    Disabled --> Registered: re-enable after recovery
+    Degraded --> Quarantined: plugin.health.changed
+    Quarantined --> Registered: re-enable after recovery (plugin.health.changed)
     Active --> Unloaded: idle / reclaimed
     Unloaded --> Loaded: re-load on demand
 ```
