@@ -203,7 +203,11 @@ class Registry(_ReadSurface):
 
     def at_version(self, n):
         """Immutable view of registry content as of version n, forever
-        (PRT/01 §4). Raises IndexError for a version that never existed."""
+        (PRT/01 §4). Raises IndexError for a version that never existed —
+        including negatives, which list indexing would otherwise silently
+        resolve to a recent version and corrupt a replay coordinate."""
+        if not isinstance(n, int) or n < 0 or n > self._version:
+            raise IndexError("registry.no_such_version:" + str(n))
         return self._history[n]
 
     def _snapshot(self):
