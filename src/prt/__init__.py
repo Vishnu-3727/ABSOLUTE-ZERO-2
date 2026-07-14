@@ -30,6 +30,16 @@ deterministic HealthManager fold that now PRODUCES the HealthSnapshot
 Phase 3 only consumed (`health`, PRT/04 §3/§6/§7, PRT-H1/H2/H5/H7/H11),
 and the one-directional Learning->PRT reliability seam
 (`reliability_bridge`, PRT/04 §4/§9, PRT-H10).
+
+Phase 5: system integration (PRT/05) — the Lifecycle-contract adapter, a
+real transition-table legality machine replacing AllowAllLegality as
+src/'s default (`lifecycle_legality`, PRT/03 §9 + PRT/04 §3, PRT-A4);
+registry persistence via an injected Storage port, replay by mutation
+through the single writer (`persistence`, PRT/00 C6, PRT/01 §4); the
+composition-root facade wiring every collaborator with no hidden state
+(`runtime`, PRT/05 §1/§2/§7); and the static structural invariant scans
+(`law_enforcer`, PRT-S1/S2/H2 + the event canon + the AllowAllLegality
+boundary ruling).
 """
 from . import events  # noqa: F401
 from .bus_double import BusDouble  # noqa: F401
@@ -108,3 +118,14 @@ from .reliability_bridge import (  # noqa: F401
     consume_reliability_update,
     drain_reliability_updates,
 )
+from .lifecycle_legality import (  # noqa: F401
+    HEALTH_TRANSITIONS,
+    LOAD_TRANSITIONS,
+    LifecycleLegality,
+    default_health_legality,
+    default_load_legality,
+)
+from . import persistence  # noqa: F401
+from .persistence import persist_registry, load_registry, snapshot_bytes  # noqa: F401
+from .runtime import PluginRuntime  # noqa: F401
+from . import law_enforcer  # noqa: F401
