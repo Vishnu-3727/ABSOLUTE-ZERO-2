@@ -89,7 +89,14 @@ def _step(carry, entry, thresholds, legality, provider_id):
         proposed = state
         if kind in _FAILURE_KINDS:
             cf, cs = cf + 1, 0
-            if state in ("RECOVERING", "RECOVERED"):
+            if state == "RECOVERING":
+                # Relapse: recovery is earned, not flag-flipped (PRT/04 §3) —
+                # a failure mid-recovery returns straight to QUARANTINED so a
+                # quarantine history is never erased by one favorable outcome
+                # followed by noise (anti-flap smoothing, frozen spec
+                # Score-thrash failure mode).
+                proposed = "QUARANTINED"
+            elif state == "RECOVERED":
                 proposed = "QUARANTINED" if cf >= thresholds["failures_to_quarantine"] else "DEGRADED"
             elif cf >= thresholds["failures_to_quarantine"]:
                 proposed = "QUARANTINED"
