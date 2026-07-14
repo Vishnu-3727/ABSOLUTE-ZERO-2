@@ -1,5 +1,7 @@
 # Context Management — Component Specification
 
+> **Errata (2026-07-14, RO Phase 5).** This spec's references to a "future Prompt Compiler Execution Service" are superseded: request preparation and rendering (prompt compilation, where prompts exist at all) live inside the Reasoning Orchestrator (RO/00 §5.7, RO/05 §9). CM's own boundary is unchanged — sole assembler of Request Memory, which RO consumes sealed (RO-I5).
+
 ## Purpose
 Context Management assembles **Request Memory** (formerly the "Optimal Context Package") — the
 smallest correct working set required to execute one request — and is the **sole context

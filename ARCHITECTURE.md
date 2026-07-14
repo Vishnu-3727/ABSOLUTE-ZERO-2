@@ -374,6 +374,11 @@ is the shared vocabulary referenced by all component specs.
 | `session.sleep` | Lifecycle | Kernel, Observability |
 | `state.updated` | Request State Manager | Frontend, Observability |
 | `state.evicted` | Request State Manager | Observability |
+| `reasoning.decided` | Reasoning Orchestrator | Scheduling, Learning, Observability |
+| `reasoning.invoked` | Reasoning Orchestrator | Observability |
+| `reasoning.completed` | Reasoning Orchestrator | Verification, Scheduling, Observability |
+| `reasoning.failed` | Reasoning Orchestrator | Scheduling, Learning, Observability |
+| `prior.updated` | Learning | Capability Planning, Reasoning Orchestrator, Observability |
 
 ---
 
@@ -408,8 +413,7 @@ Storage on the owner's behalf. No two rows share a state.
 - **Process spawning** exists in exactly one place: Execution (kills H4).
 - **Context assembly** exists in exactly one place: Context Management — it
   builds Request Memory and nothing else builds it.
-- **Prompt compilation** exists in exactly one place: the Prompt Compiler
-  (future Execution Service) — it consumes Request Memory, never builds it.
+- **Request preparation & rendering** (formerly "prompt compilation") exist in exactly one place: the Reasoning Orchestrator (supersedes the planned Prompt Compiler Execution Service — RO/00 §5.7); it consumes Request Memory, never builds it.
 - **Config** has one source of truth: Storage (kills M4 duplication).
 - **Telemetry** has one schema and one sink: Observability (kills M8 scatter).
 
@@ -494,7 +498,7 @@ flowchart LR
     CTX -->|read prior decisions| EPI[(Episodic · via Storage)]
     MEM -->|ranked results ≤25-token summaries| CTX
     CTX -->|rank · dedup · fit budget · fidelity tiers| RQM[Request Memory]
-    RQM --> LLM[[LLM call · model-agnostic iface]]
+    RQM --> RO2[Reasoning Orchestrator · necessity gate + request prep] --> LLM[[reasoning engine · model-agnostic, governed invocation]]
     CTX -.context.assembled.-> OBS[Observability]
 ```
 
@@ -537,7 +541,7 @@ flowchart LR
 | Execution | Sole process spawner; sandbox, timeouts, retries, caps, failure containment. | [execution.md](COMPONENTS/execution.md) |
 | Capability Planning | Intent → validated plans; classification, decomposition, capability matching, confidence. | [capability-planning.md](COMPONENTS/capability-planning.md) |
 | Plugin Runtime | Discovers/loads/isolates/versions plugins; capability registry; self-healing reliability. | [plugin-runtime.md](COMPONENTS/plugin-runtime.md) |
-| Context Management | Sole assembler of Request Memory; ranking, dedup, budget, freshness. Prompt compilation deferred to future Prompt Compiler service. | [context-management.md](COMPONENTS/context-management.md) |
+| Context Management | Sole assembler of Request Memory; ranking, dedup, budget, freshness. Prompt compilation superseded: request preparation/rendering lives in the Reasoning Orchestrator (RO/00 §5.7). | [context-management.md](COMPONENTS/context-management.md) |
 | Verification | Mechanical gates on plans/diffs/artifacts/selftests; verdicts as enforced events. | [verification.md](COMPONENTS/verification.md) |
 | Learning | Harvests closed traces into lessons/faults/priors; updates reliability. | [learning.md](COMPONENTS/learning.md) |
 | Storage | Sole durable-write authority; atomic/locked/transactional; config source of truth. | [storage.md](COMPONENTS/storage.md) |
@@ -546,3 +550,4 @@ flowchart LR
 | Lifecycle | State machines for long-lived things; owns transition legality. | [lifecycle.md](COMPONENTS/lifecycle.md) |
 | Observability | Unified telemetry: traces, metrics, token/cost accounting, audit log; one schema, one sink. | [observability.md](COMPONENTS/observability.md) |
 | Request State Manager | Single source of truth for runtime request state; event-sourced materialized view, journal, replay. | [RSM/](RSM/01-problem-definition.md) |
+| Reasoning Orchestrator | Governs reasoning as a scarce resource: necessity gate, provider-independent request preparation, governed invocation; never reasons. | [RO/](RO/00-architectural-foundation.md) |
