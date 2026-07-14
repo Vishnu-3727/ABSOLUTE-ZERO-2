@@ -6,12 +6,27 @@ out a mutable dict, so "no direct dict access from outside" is structural,
 not a convention (mirrors rsm/store.py's create()/apply() shape, no bare
 dict on the object's public surface).
 
-Phase 1 builds only the PRT/01 §9 consistency rules; Phase 2 will wrap
-`apply` in the full 9-stage admission pipeline (PRT/02 §3) without
+Phase 1 builds only the PRT/01 §9 consistency rules; Phase 2 (admission.py)
+wraps `apply` in the full 9-stage admission pipeline (PRT/02 §3) without
 changing this module's contract. Every mutation is validated in full
 against a *candidate next state* (cloned working copies) before anything
 on `self` changes — refused mutations leave version and content bit-for-
 bit untouched (PRT-R10), never partially applied (PRT-A6 spirit).
+
+Phase 2 extensions, both additive, neither redesigns the above:
+- `admit_bundle` mutation kind + `_handle_admit_bundle`: one candidacy's
+  whole proposed record set (capabilities/provider/bindings/relationships)
+  applied to one working state via the existing per-kind handlers, so one
+  candidacy = exactly one version (PRT-A6/A10).
+- `dry_run()`: validate-without-commit, factored out of `apply()` (now
+  `_validate()` + commit) so admission.py can run PRT/02 stage 8's
+  consistency check before persist-before-commit (§9) without a second,
+  premature commit.
+- `AliasTargetRetirementError` + a guard in `_handle_lifecycle_transition`:
+  a capability may not retire while a live alias still targets it (PRT/01
+  §5's "canonical target must be active-or-deprecated", closed as a KNOWN
+  SEAM at PRT/02 — alias cleanup must land in the same or an earlier
+  mutation).
 
 Version monotonicity (PRT-R4/PRT-R5) is structural rather than checked:
 no mutation ever carries a caller-supplied version number, so there is
@@ -70,6 +85,13 @@ class BindingConsistencyError(RecoverableRefusal):
 
 class LifecycleTransitionError(RecoverableRefusal):
     """Backward, sideways, or unknown-state lifecycle transition."""
+
+
+class AliasTargetRetirementError(RecoverableRefusal):
+    """PRT/01 §5: a canonical alias target must stay active-or-deprecated.
+    Refuses capability retirement while any live alias still resolves to it
+    (KNOWN SEAM closed at PRT/02: alias cleanup must land in the same or an
+    earlier mutation, never leave a dangling canonical target)."""
 
 
 class MetadataIncompleteError(RecoverableRefusal):
@@ -222,22 +244,7 @@ class Registry(_ReadSurface):
         never partially (PRT-A6 spirit). Returns the new registry-global
         version on success; raises a RegistryRefusal subclass on refusal,
         leaving version and content bit-for-bit untouched (PRT-R10)."""
-        if not isinstance(mutation, dict) or "kind" not in mutation:
-            raise UnknownMutationError("registry.malformed_mutation")
-        kind = mutation["kind"]
-        handler = _HANDLERS.get(kind)
-        if handler is None:
-            raise UnknownMutationError("registry.unknown_mutation_kind:" + str(kind))
-
-        # candidate next state: shallow copies, mutated only on these
-        working = _Working(
-            capabilities=dict(self._capabilities),
-            providers=dict(self._providers),
-            bindings=dict(self._bindings),
-            aliases=dict(self._aliases),
-            relationships=list(self._relationships),
-        )
-        handler(working, mutation)  # raises a RegistryRefusal on any violation; no self.* touched
+        working = self._validate(mutation)  # raises a RegistryRefusal; no self.* touched
 
         # every check passed against the candidate state: commit atomically
         self._capabilities = working.capabilities
@@ -252,6 +259,35 @@ class Registry(_ReadSurface):
         self._version += 1
         self._history.append(self._snapshot())
         return self._version
+
+    def _validate(self, mutation):
+        """Build a candidate next state and run `mutation`'s handler against
+        it, WITHOUT committing (shared by apply() and dry_run()). Raises the
+        same RegistryRefusal apply() would; returns the validated working
+        copy on success. No side effect on `self` either way."""
+        if not isinstance(mutation, dict) or "kind" not in mutation:
+            raise UnknownMutationError("registry.malformed_mutation")
+        kind = mutation["kind"]
+        handler = _HANDLERS.get(kind)
+        if handler is None:
+            raise UnknownMutationError("registry.unknown_mutation_kind:" + str(kind))
+        working = _Working(
+            capabilities=dict(self._capabilities),
+            providers=dict(self._providers),
+            bindings=dict(self._bindings),
+            aliases=dict(self._aliases),
+            relationships=list(self._relationships),
+        )
+        handler(working, mutation)
+        return working
+
+    def dry_run(self, mutation):
+        """PRT/02 §3 stage 8 (consistency validation) + stage 9's
+        persist-before-commit need a validate-without-committing step that
+        apply()'s validate+commit-in-one-call shape doesn't offer on its own.
+        Raises on refusal, returns None on success; `self` is untouched
+        either way — same guarantee apply() gives on a refusal."""
+        self._validate(mutation)
 
 
 class _Working:
@@ -391,6 +427,13 @@ def _handle_lifecycle_transition(working, mutation):
         if existing is None:
             raise NotFoundError("registry.capability_not_found:" + entity_id)
         _check_forward(existing.lifecycle, to_state, LifecycleTransitionError, entity_id)
+        if to_state == "retired" and any(
+                target == entity_id for target in working.aliases.values()):
+            # PRT/01 §5: canonical target must stay active-or-deprecated;
+            # alias cleanup (repoint or drop) must land in the same or an
+            # earlier mutation, never after this one (KNOWN SEAM, PRT/02).
+            raise AliasTargetRetirementError(
+                "registry.alias_still_targets_retiring_capability:" + entity_id)
         working.capabilities[entity_id] = replace(existing, lifecycle=to_state)
     elif entity == "provider":
         existing = working.providers.get(entity_id)
@@ -408,6 +451,23 @@ def _handle_lifecycle_transition(working, mutation):
         raise UnknownMutationError("registry.unknown_entity:" + str(entity))
 
 
+def _handle_admit_bundle(working, mutation):
+    """PRT/02 §3 stage 9 / PRT-A6/PRT-A10: one candidacy's ENTIRE proposed
+    bundle (capabilities + provider + bindings + relationships) applied to
+    ONE working state, so success mints exactly one version and failure
+    anywhere leaves zero trace. Pure composition of the existing per-kind
+    handlers, in the order a declaration's own parts depend on each other
+    (capabilities and provider before bindings that reference them,
+    relationships last) — no new consistency logic, extension only."""
+    for record in mutation.get("capabilities", ()):
+        _handle_add_capability(working, {"kind": "add_capability", "record": record})
+    _handle_add_provider(working, {"kind": "add_provider", "record": mutation["provider"]})
+    for record in mutation.get("bindings", ()):
+        _handle_add_binding(working, {"kind": "add_binding", "record": record})
+    for record in mutation.get("relationships", ()):
+        _handle_add_relationship(working, {"kind": "add_relationship", "record": record})
+
+
 _HANDLERS = {
     "add_capability": _handle_add_capability,
     "update_capability": _handle_update_capability,
@@ -416,6 +476,7 @@ _HANDLERS = {
     "remove_binding": _handle_remove_binding,
     "add_relationship": _handle_add_relationship,
     "lifecycle_transition": _handle_lifecycle_transition,
+    "admit_bundle": _handle_admit_bundle,
 }
 
 
@@ -512,5 +573,60 @@ if __name__ == "__main__":
     reg.apply({"kind": "add_capability", "record": renamed})
     assert reg.resolve("cap.old.alias") == "cap.new"
     assert reg.get_capability("cap.old.alias").id == "cap.new"
+
+    # KNOWN SEAM (PRT/02): retiring a capability with a live alias targeting
+    # it is refused -- alias cleanup must land in the same/earlier mutation
+    reg.apply({"kind": "lifecycle_transition", "entity": "capability",
+              "id": "cap.new", "to_state": "active"})
+    try:
+        reg.apply({"kind": "lifecycle_transition", "entity": "capability",
+                  "id": "cap.new", "to_state": "deprecated"})
+        reg.apply({"kind": "lifecycle_transition", "entity": "capability",
+                  "id": "cap.new", "to_state": "retired"})
+        raise SystemExit("capability retired despite live alias target")
+    except AliasTargetRetirementError:
+        pass
+
+    # dry_run: validates without committing (PRT/02 stage 8 / persist-before-commit)
+    reg9 = Registry()
+    good_cap = build_capability("cap.dry", "d", "nlp", verification_expectations=("x",))
+    v_before = reg9.current_version
+    reg9.dry_run({"kind": "add_capability", "record": good_cap})
+    assert reg9.current_version == v_before  # no side effect on success
+    assert reg9.get_capability("cap.dry") is None
+    try:
+        reg9.dry_run({"kind": "lifecycle_transition", "entity": "capability",
+                      "id": "cap.missing", "to_state": "active"})
+        raise SystemExit("dry_run of bad mutation accepted")
+    except NotFoundError:
+        pass
+    assert reg9.current_version == v_before  # still no side effect on refusal
+
+    # admit_bundle: one atomic composite mutation, one version (PRT-A6/A10)
+    bundle_cap = build_capability("cap.bundle", "d", "nlp", lifecycle="active",
+                                  verification_expectations=("x",))
+    bundle_prov = build_provider("prov.bundle", "1.0")
+    bundle_binding = build_binding("cap.bundle", "prov.bundle")
+    mutation = {"kind": "admit_bundle", "capabilities": (bundle_cap,),
+                "provider": bundle_prov, "bindings": (bundle_binding,),
+                "relationships": ()}
+    v_bundle = reg9.apply(mutation)
+    assert reg9.get_capability("cap.bundle").id == "cap.bundle"
+    assert reg9.get_provider("prov.bundle").id == "prov.bundle"
+    assert [b.provider_id for b in reg9.bindings_for("cap.bundle")] == ["prov.bundle"]
+    assert v_bundle == v_before + 1  # exactly one version for the whole bundle
+
+    # admit_bundle failure anywhere -> zero registry change (all-or-nothing)
+    bad_binding = build_binding("cap.bundle", "prov.nonexistent")
+    v_before_bad = reg9.current_version
+    try:
+        reg9.apply({"kind": "admit_bundle", "capabilities": (),
+                   "provider": build_provider("prov.bundle2", "1.0"),
+                   "bindings": (bad_binding,), "relationships": ()})
+        raise SystemExit("partially-invalid bundle accepted")
+    except BindingConsistencyError:
+        pass
+    assert reg9.current_version == v_before_bad
+    assert reg9.get_provider("prov.bundle2") is None  # provider add rolled back too
 
     print("registry selftest ok")
