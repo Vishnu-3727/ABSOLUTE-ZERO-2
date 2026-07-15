@@ -38,6 +38,24 @@ governance-side replay from sealed records alone (`execution_replay`). RO
 is the sole invocation authority (RO-E1); nondeterminism exists only inside
 the injected boundary call, never in RO's own code (zero time/random/
 datetime imports, AST-enforced).
+
+Phase 5: system integration & completion (RO/05, blueprint group G6) — THE
+FINAL RO PHASE; the subsystem is complete as of this package. The closed
+four-event canon derived from sealed records, never wrapping Phase 1-4's
+frozen builders (`events`), RO's own Communication/Storage test-fixture
+doubles (`bus_double`, `storage_double`), the one versioned priors artifact
+Experience feeds back with monotonic-version replay pinning (`priors`), the
+RO<->Verification boundary artifact with no verdict-return path
+(`verification_handoff`), the reference-shaped Out-flow batch toward
+Experience (`experience_feed`), the ten RO/05 §7 metric DEFINITIONS with
+zero computation (`metrics`), durable-artifact round trips through an
+injected Storage port (`persistence`), and the composition root wiring
+every collaborator — including the RSM mirror seam folded in as
+`ReasoningOrchestrator.mirror_to_rsm` per Fable R5, since the four
+canonical events themselves are the mirror transport (`runtime`). Static,
+scannable half of every RO-* invariant list lives in `law_enforcer`. Zero
+imports from src/prt, src/cm, src/ums, src/kernel, src/rsm anywhere in this
+package (RO-S8) — AST-enforced alongside every other zero-seam check.
 """
 from .config_view import ConfigView, DEFAULT as DEFAULT_CONFIG  # noqa: F401
 from .records import (  # noqa: F401
@@ -221,3 +239,46 @@ from .execution_replay import (  # noqa: F401
     ReplayRefusal,
     replay_attempts,
 )
+from .events import (  # noqa: F401
+    PUBLISHED as EVENTS_PUBLISHED,
+    CONSUMED as EVENTS_CONSUMED,
+    emit as emit_event,
+    check_consumed as check_consumed_event,
+)
+from .bus_double import BusDouble  # noqa: F401
+from .storage_double import StorageDouble  # noqa: F401
+from .priors import (  # noqa: F401
+    PriorsRefusal,
+    MalformedPriorsPayloadError,
+    StaleOrDuplicateVersionError,
+    UnknownVersionError as UnknownPriorsVersionError,
+    PriorsArtifact,
+    PriorsStore,
+    build_priors_artifact,
+    canonical as canonical_priors,
+    content_hash as priors_content_hash,
+)
+from .verification_handoff import (  # noqa: F401
+    HandoffRefusal,
+    NonReturnedRecordError,
+    VerificationHandoff,
+    build_handoff,
+    canonical as canonical_handoff,
+    content_hash as handoff_content_hash,
+)
+from .experience_feed import (  # noqa: F401
+    ExperienceBatch,
+    build_experience_batch,
+)
+from .metrics import (  # noqa: F401
+    MetricDefinition,
+    METRIC_DEFINITIONS,
+    get_definition as get_metric_definition,
+)
+from . import persistence  # noqa: F401
+from .runtime import (  # noqa: F401
+    RuntimeRefusal,
+    ReplayMismatchError,
+    ReasoningOrchestrator,
+)
+from . import law_enforcer  # noqa: F401
