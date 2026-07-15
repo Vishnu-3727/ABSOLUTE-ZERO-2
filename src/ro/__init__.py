@@ -14,6 +14,17 @@ governance policy as data (`policy_view`), and the pure `decide()` gate
 producing one of five closed outcomes (`decision_gate`). Never imports
 DescriptorRow (RO-D3) — provider identity/availability is structurally
 invisible to the gate.
+
+Phase 3: request preparation + resolution/rendering (RO/03, blueprint
+groups G3+G4) — OS-owned output schemas (`schemas`), governance token
+budgets with parent-envelope inheritance (`budget`), sealed-RQM context
+selection/reduction (`context_prep`), capability matching + deterministic
+provider selection (`matching_selection`), and the `prepare()` entry point
+assembling the two-artifact pair — provider-independent `ReasoningRequest`
++ `ProviderResolution` (`request`) — plus the governance-lossless renderer
+mapping a request into one provider-consumable form (`renderer`). Provider
+identity lives only in `ProviderResolution`, never in `ReasoningRequest` or
+any rendering (RO-P2/P3).
 """
 from .config_view import ConfigView, DEFAULT as DEFAULT_CONFIG  # noqa: F401
 from .records import (  # noqa: F401
@@ -29,6 +40,7 @@ from .records import (  # noqa: F401
     DEPLOYMENT_LOCALITY_CLASSES,
     PRIVACY_DOMAINS,
     RELIABILITY_BASELINE_CLASSES,
+    REQUEST_FORMS,
     CapabilityRecord,
     RelationshipRecord,
     DescriptorRow,
@@ -75,4 +87,54 @@ from .decision_gate import (  # noqa: F401
     decide,
     canonical as canonical_decision,
     content_hash as decision_content_hash,
+)
+from .schemas import (  # noqa: F401
+    SchemaRefusal,
+    DuplicateSchemaVersionError,
+    UnknownSchemaError,
+    SchemaRecord,
+    SchemaRegistry,
+)
+from .budget import (  # noqa: F401
+    BudgetRefusal,
+    BudgetInvalidError,
+    BudgetExhaustedError,
+    BudgetInfeasibleError,
+    BudgetEnvelope,
+    allocate_budget,
+    require_fits,
+)
+from .context_prep import (  # noqa: F401
+    ContextRefusal,
+    MalformedRQMError,
+    StaleRQMError,
+    EmptyContextError,
+    select_and_reduce,
+    validate_rqm,
+    rqm_content_hash,
+    check_freshness,
+)
+from .matching_selection import (  # noqa: F401
+    MatchingRefusal,
+    EmptyCandidateSetError,
+    EmptyEligibleSetError,
+    build_candidate_set,
+    select_provider,
+    derive_size_class,
+)
+from .request import (  # noqa: F401
+    PreparationRefusal,
+    UnapprovedDecisionError,
+    UnconstrainedRequestError,
+    ReasoningRequest,
+    ProviderResolution,
+    prepare,
+    canonical as canonical_request,
+    content_hash as request_content_hash,
+)
+from .renderer import (  # noqa: F401
+    RenderRefusal,
+    UnknownRequestFormError,
+    render,
+    assert_lossless,
 )
