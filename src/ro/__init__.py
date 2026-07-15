@@ -25,6 +25,19 @@ assembling the two-artifact pair — provider-independent `ReasoningRequest`
 mapping a request into one provider-consumable form (`renderer`). Provider
 identity lives only in `ProviderResolution`, never in `ReasoningRequest` or
 any rendering (RO-P2/P3).
+
+Phase 4: execution governance (RO/04, blueprint group G5) — the sealed
+outcome record shape (`outcome`), injected cancellation signals (
+`cancellation`), execution policy as data including timeout-class
+derivation (`execution_policy`), the injected engine boundary port +
+`ScriptedEngineDouble` (`engine_boundary`), the invocation governor driving
+Initiated -> Executing -> Recovery -> Sealed for every attempt plus retry-
+with-substitution and escalation directives (`invocation`), governed
+composition of individually-sealed constituents (`composite`), and
+governance-side replay from sealed records alone (`execution_replay`). RO
+is the sole invocation authority (RO-E1); nondeterminism exists only inside
+the injected boundary call, never in RO's own code (zero time/random/
+datetime imports, AST-enforced).
 """
 from .config_view import ConfigView, DEFAULT as DEFAULT_CONFIG  # noqa: F401
 from .records import (  # noqa: F401
@@ -137,4 +150,74 @@ from .renderer import (  # noqa: F401
     UnknownRequestFormError,
     render,
     assert_lossless,
+)
+from .outcome import (  # noqa: F401
+    RECORD_VERSION,
+    RECOVERY_KINDS,
+    FAILURE_CLASSES,
+    CANCELLATION_ORIGINS,
+    OutcomeRefusal,
+    InconsistentOutcomeError,
+    SealedOutcomeRecord,
+    build_sealed_outcome,
+    canonical as canonical_outcome,
+    content_hash as outcome_content_hash,
+)
+from .cancellation import (  # noqa: F401
+    # ORIGINS not re-imported here: identical closed tuple already exported
+    # as CANCELLATION_ORIGINS above (outcome.py owns it; cancellation.py
+    # imports the same object).
+    CancellationRefusal,
+    UnknownOriginError,
+    CancellationSignal,
+    build_cancellation_signal,
+    canonical as canonical_cancellation,
+    content_hash as cancellation_content_hash,
+)
+from .execution_policy import (  # noqa: F401
+    TIMEOUT_CLASSES,
+    ExecutionPolicyRefusal,
+    UnknownTimeoutInputError,
+    ExecutionPolicyView,
+    build_execution_policy_view,
+    derive_timeout_class,
+)
+from .engine_boundary import (  # noqa: F401
+    CROSSING_KINDS,
+    BoundaryRefusal,
+    ScriptExhaustedError,
+    MalformedBoundaryReturnError,
+    CrossingPayload,
+    ScriptedEngineDouble,
+)
+from .invocation import (  # noqa: F401
+    InvocationRefusal,
+    SubstitutionRefusedError,
+    EscalationDirective,
+    run_attempts,
+    retry_with_substitution,
+    escalation_directive,
+    canonical as canonical_escalation_directive,
+    content_hash as escalation_directive_content_hash,
+)
+from .composite import (  # noqa: F401
+    PATTERNS,
+    AGGREGATION_RULES,
+    FAILURE_SEMANTICS,
+    CompositeRefusal,
+    UnknownPatternError,
+    MissingAggregationRuleError,
+    UnknownFailureSemanticsError,
+    EmptyConstituentsError,
+    ConstituentSpec,
+    CompositePlan,
+    CompositeOutcome,
+    build_composite_plan,
+    run_composite,
+    canonical as canonical_composite,
+    content_hash as composite_content_hash,
+)
+from .execution_replay import (  # noqa: F401
+    ReplayRefusal,
+    replay_attempts,
 )
