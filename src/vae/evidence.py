@@ -53,7 +53,17 @@ class MalformedEvidenceRecordError(EvidenceRefusal):
 
 class DerivationAccountRefusedError(EvidenceRefusal):
     """Phase 1 refuses any attempt to set a non-None derivation account —
-    that slot is filled for real only in Phase 3 (VAE-A10)."""
+    that slot is filled for real only in Phase 3 (VAE-A10). Also raised by
+    `with_derivation_account` if the target record's slot is already filled
+    (the slot is filled exactly once; re-deriving produces a new account to
+    compare, never a second write to the same record)."""
+
+
+class DerivationAccountMalformedError(EvidenceRefusal):
+    """A derivation account passed to `with_derivation_account` was not a
+    mapping (Phase 3, derivation.py, is the only producer of well-formed
+    accounts; this is a structural backstop, not a content check — this
+    module has no opinion on account content)."""
 
 
 @dataclass(frozen=True)
@@ -124,6 +134,31 @@ def append_item(record, item):
         raise MalformedEvidenceItemError("evidence.append_item_not_built:" + repr(item))
     return EvidenceRecord(artifact_ref=record.artifact_ref, rules_version=record.rules_version,
                            items=record.items + (item,), derivation_account=None)
+
+
+def with_derivation_account(record, account):
+    """Phase 3's ONLY path into the derivation-account slot (VAE-A10):
+    returns a NEW frozen `EvidenceRecord` — same artifact/rules binding,
+    same items tuple, untouched — with `derivation_account` filled from a
+    completed Phase 3 derivation. Additive to Phase 1: `build_evidence_record`
+    and `append_item` still refuse any non-None account outright; this
+    function is the one place that fills it, and only once per record (a
+    record whose slot is already filled is refused — the account is not an
+    editable field, VAE-A6). Never mutates `record`; `account` is stored
+    as-is (derivation.py is responsible for handing over an already-frozen,
+    already-immutable structure — this module has no opinion on its shape
+    beyond "is a mapping")."""
+    if not isinstance(record, EvidenceRecord):
+        raise MalformedEvidenceRecordError(
+            "evidence.with_derivation_account_target_not_a_record:" + repr(record))
+    if record.derivation_account is not None:
+        raise DerivationAccountRefusedError(
+            "evidence.derivation_account_already_set:" + record.artifact_ref)
+    if not isinstance(account, (dict, MappingProxyType)):
+        raise DerivationAccountMalformedError(
+            "evidence.derivation_account_not_a_mapping:" + repr(account))
+    return EvidenceRecord(artifact_ref=record.artifact_ref, rules_version=record.rules_version,
+                           items=record.items, derivation_account=account)
 
 
 # -- canonical serialization (records.py / priors.py pattern) ---------------
