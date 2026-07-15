@@ -70,6 +70,11 @@ DEPLOYMENT_LOCALITY_CLASSES = ("local", "remote")
 PRIVACY_DOMAINS = ("public", "internal", "restricted")
 RELIABILITY_BASELINE_CLASSES = ("low", "medium", "high")
 
+# RO/03 §11 — the closed vocabulary of request render forms a descriptor row
+# may declare (Phase 3 additive field; RO/00 §11.5 bounded extension: a new
+# modality is a new tuple entry + renderer, zero shape change here).
+REQUEST_FORMS = ("prompt_text",)
+
 
 def _freeze_mapping(d):
     return MappingProxyType(dict(d or {}))
@@ -146,17 +151,24 @@ class DescriptorRow:
     privacy_domain: str
     compliance_tags: tuple
     reliability: MappingProxyType  # {"baseline": class, "priors_version": int|None}
+    request_form: str  # RO/03 §11 — closed REQUEST_FORMS vocabulary (Phase 3 additive)
 
 
 def build_descriptor_row(provider_id, capabilities_claimed, context_capacity_class,
                           cost_class, latency_class, determinism_class,
                           deployment_locality, privacy_domain, compliance_tags=(),
-                          reliability=None):
+                          reliability=None, request_form="prompt_text"):
     """Construct a DescriptorRow. Every categorical field is checked against
     its closed vocabulary; `capabilities_claimed` must be non-empty and
     every claimed rung must be one of C0-C4 (RO/01 §6). Shape only — this
     does not check the claimed capability ids actually exist or are
-    active; that is descriptor_space.py's cross-referencing job."""
+    active; that is descriptor_space.py's cross-referencing job.
+
+    `request_form` (RO/03 §11, Phase 3 additive, purely optional/additive —
+    defaults to "prompt_text" so every Phase 1/2 call site is unaffected):
+    the renderer form this row's engine consumes."""
+    if request_form not in REQUEST_FORMS:
+        raise ValueError("records.unknown_request_form:" + str(request_form))
     if context_capacity_class not in CONTEXT_CAPACITY_CLASSES:
         raise ValueError("records.unknown_context_capacity_class:" + str(context_capacity_class))
     if cost_class not in COST_CLASSES:
@@ -198,6 +210,7 @@ def build_descriptor_row(provider_id, capabilities_claimed, context_capacity_cla
         deployment_locality=deployment_locality, privacy_domain=privacy_domain,
         compliance_tags=tuple(compliance_tags),
         reliability=_freeze_mapping({"baseline": baseline, "priors_version": priors_version}),
+        request_form=request_form,
     )
 
 
@@ -226,6 +239,7 @@ def to_dict(record):
             "privacy_domain": record.privacy_domain,
             "compliance_tags": list(record.compliance_tags),
             "reliability": dict(record.reliability),
+            "request_form": record.request_form,
         }
     raise TypeError("records.unknown_record_type:" + repr(type(record)))
 
@@ -315,6 +329,18 @@ if __name__ == "__main__":
     )
     assert row.capabilities_claimed["ro.cap.summarize"] == ("C0", "C1")  # dedup + sorted
     assert row.reliability["priors_version"] == 3
+    assert row.request_form == "prompt_text"  # default, Phase 3 additive field
+
+    # unknown request_form refused
+    try:
+        build_descriptor_row(
+            "ro.provider.badform", {"ro.cap.summarize": ("C1",)}, context_capacity_class="medium",
+            cost_class="low", latency_class="fast", determinism_class="low_variance",
+            deployment_locality="local", privacy_domain="internal", request_form="carrier_pigeon",
+        )
+        raise SystemExit("unknown request_form accepted")
+    except ValueError:
+        pass
 
     # descriptor row claiming nothing refused
     try:
