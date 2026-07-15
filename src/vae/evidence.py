@@ -10,7 +10,7 @@ Evidence items are the fourth part; identified absences (VAE/02 §5
 than a bolted-on side channel — each is an ordinary `EvidenceItem` whose
 `contribution_kind` is `"missing"` and which carries no `source` (there is
 nothing to attribute an absence to). Contribution kind is a closed five
-(VAE/02 §5): `direct`, `corroborating`, `redundant`, `conflicting`,
+(VAE/02 §5): `independent`, `corroborating`, `redundant`, `conflicting`,
 `missing` — anything else is refused loud (VAE-M7's "every evidence item
 attributable" carried into a hard structural check).
 
@@ -32,7 +32,7 @@ from types import MappingProxyType
 import hashlib
 import json
 
-CONTRIBUTION_KINDS = ("direct", "corroborating", "redundant", "conflicting", "missing")
+CONTRIBUTION_KINDS = ("independent", "corroborating", "redundant", "conflicting", "missing")
 
 
 class EvidenceRefusal(Exception):
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     assert rec.derivation_account is None
 
     item_a = build_evidence_item("rule.structural", "artifact:a1", "check.structural",
-                                  "pass", "direct", "structural")
+                                  "pass", "independent", "structural")
     item_b = build_evidence_item("rule.semantic", "artifact:a1", "check.semantic",
                                   "pass", "corroborating", "semantic")
     absence = build_evidence_item("rule.system", "artifact:a1", None,
@@ -208,7 +208,7 @@ if __name__ == "__main__":
     except MalformedEvidenceItemError:
         pass
     try:
-        build_evidence_item("r", "a", None, "pass", "direct", "structural")
+        build_evidence_item("r", "a", None, "pass", "independent", "structural")
         raise SystemExit("non-missing item with no source accepted")
     except MalformedEvidenceItemError:
         pass

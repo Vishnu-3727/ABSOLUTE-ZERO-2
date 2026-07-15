@@ -85,7 +85,7 @@ class EvidenceAppendOnlyTests(unittest.TestCase):
     def test_append_grows_record_without_mutating_original(self):
         rec = evidence.build_evidence_record("artifact:a1", 1)
         item = evidence.build_evidence_item(
-            "rule.structural", "artifact:a1", "check.structural", "pass", "direct", "structural")
+            "rule.structural", "artifact:a1", "check.structural", "pass", "independent", "structural")
         rec2 = evidence.append_item(rec, item)
         self.assertEqual(rec.items, ())
         self.assertEqual(rec2.items, (item,))
@@ -101,7 +101,7 @@ class EvidenceAppendOnlyTests(unittest.TestCase):
     def test_record_and_item_fields_frozen(self):
         rec = evidence.build_evidence_record("artifact:a1", 1)
         item = evidence.build_evidence_item(
-            "rule.structural", "artifact:a1", "check.structural", "pass", "direct", "structural")
+            "rule.structural", "artifact:a1", "check.structural", "pass", "independent", "structural")
         with self.assertRaises(AttributeError):
             rec.items = ()
         with self.assertRaises(AttributeError):
@@ -120,9 +120,9 @@ class ClosedSetRefusalTests(unittest.TestCase):
     def test_contribution_kind_outside_closed_five_refused(self):
         self.assertEqual(
             evidence.CONTRIBUTION_KINDS,
-            ("direct", "corroborating", "redundant", "conflicting", "missing"))
+            ("independent", "corroborating", "redundant", "conflicting", "missing"))
         with self.assertRaises(evidence.UnknownContributionKindError):
-            evidence.build_evidence_item("r", "a", "s", "res", "independent", "structural")
+            evidence.build_evidence_item("r", "a", "s", "res", "speculative", "structural")
 
     def test_missing_item_must_carry_no_source(self):
         with self.assertRaises(evidence.MalformedEvidenceItemError):
@@ -130,7 +130,7 @@ class ClosedSetRefusalTests(unittest.TestCase):
 
     def test_non_missing_item_must_carry_a_source(self):
         with self.assertRaises(evidence.MalformedEvidenceItemError):
-            evidence.build_evidence_item("r", "a", None, "pass", "direct", "structural")
+            evidence.build_evidence_item("r", "a", None, "pass", "independent", "structural")
 
     def test_event_closed_sets_match_spec(self):
         self.assertEqual(events.PUBLISHED, (
@@ -168,7 +168,7 @@ class DerivationAccountRefusalTests(unittest.TestCase):
         rec = evidence.build_evidence_record("artifact:a1", 1)
         self.assertIsNone(rec.derivation_account)
         item = evidence.build_evidence_item(
-            "rule.structural", "artifact:a1", "check.structural", "pass", "direct", "structural")
+            "rule.structural", "artifact:a1", "check.structural", "pass", "independent", "structural")
         rec2 = evidence.append_item(rec, item)
         self.assertIsNone(rec2.derivation_account)
 
@@ -176,7 +176,7 @@ class DerivationAccountRefusalTests(unittest.TestCase):
 class ContentHashTests(unittest.TestCase):
     def _two_items(self):
         item_a = evidence.build_evidence_item(
-            "rule.structural", "artifact:a1", "check.structural", "pass", "direct", "structural")
+            "rule.structural", "artifact:a1", "check.structural", "pass", "independent", "structural")
         item_b = evidence.build_evidence_item(
             "rule.semantic", "artifact:a1", "check.semantic", "pass", "corroborating", "semantic")
         return item_a, item_b
