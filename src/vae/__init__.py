@@ -25,7 +25,34 @@ reasoning.completed}. Invented names refused loud on both sides.
 
 `bus_double`, `storage_double` — VAE's own Communication/Storage test
 doubles: at-least-once per-topic FIFO with scriptable duplicate injection,
-and a blob store with scriptable commit/reject write outcomes (VAE-O6 path)."""
+and a blob store with scriptable commit/reject write outcomes (VAE-O6 path).
+
+Phase 2: judgment core (VAE/06 Phase 2) — demand intake, the delegation
+lifecycle with Execution, VAE's own bounded static checks, and the
+judgment aggregate that closes a Phase 1 EvidenceRecord into a closed
+evidence body. Still no verdicts, confidence, or assurance — Phase 3's.
+
+`intake` — dedup by event id, one judgment per gated artifact occurrence,
+terminal-artifact demand answered by the existing verdict reference
+(VAE/04 §2.2), reusing events.py's own closed CONSUMED-set check.
+
+`delegation` — the four-state lifecycle Required -> Dispatched ->
+(Resulted | Expired) (VAE/04 §3.2) on the injected Execution boundary,
+rules-assigned deadlines as injected data, and VAE-O3's re-dispatch
+refusal (a delegation that produced an outcome is never dispatched again;
+an unacknowledged dispatch may be idempotently re-issued).
+
+`execution_double` — VAE's own scripted Execution boundary double: a
+dispatch/poll pair whose answers are a pure function of what was scripted
+plus an injected `now` (deterministic nondeterminism).
+
+`static_checks` — a per-instance `StaticCheckRegistry` for VAE's own
+bounded, I/O-free, clock-free checks; ships one built-in
+(`reference_wellformed`).
+
+`judgment` — the aggregate tying intake + delegations + static checks into
+a growing EvidenceRecord; `close()` seals it once every required check has
+reached a terminal state, ready for Phase 3's derivation."""
 from .rules import (  # noqa: F401
     RulesRefusal,
     MalformedRulesError,
@@ -64,3 +91,53 @@ from .events import (  # noqa: F401
 )
 from .bus_double import BusDouble  # noqa: F401
 from .storage_double import StorageDouble  # noqa: F401
+from .intake import (  # noqa: F401
+    Intake,
+    IntakeResult,
+    DemandAlreadyTerminalConflictError,
+    OPENED as INTAKE_OPENED,
+    ALREADY_OPEN as INTAKE_ALREADY_OPEN,
+    ANSWERED_BY_EXISTING_VERDICT as INTAKE_ANSWERED_BY_EXISTING_VERDICT,
+    DEDUPED as INTAKE_DEDUPED,
+)
+from .delegation import (  # noqa: F401
+    Delegation,
+    DelegationRefusal,
+    ReDispatchRefusedError,
+    IllegalTransitionError as DelegationIllegalTransitionError,
+    build_delegation,
+    dispatch as dispatch_delegation_state,
+    resolve as resolve_delegation_state,
+    REQUIRED as DELEGATION_REQUIRED,
+    DISPATCHED as DELEGATION_DISPATCHED,
+    RESULTED as DELEGATION_RESULTED,
+    EXPIRED as DELEGATION_EXPIRED,
+)
+from .execution_double import (  # noqa: F401
+    ExecutionDouble,
+    ExecutionDoubleRefusal,
+    UnknownResultOutcomeError,
+    RESULT_OUTCOMES as EXECUTION_RESULT_OUTCOMES,
+)
+from .static_checks import (  # noqa: F401
+    StaticCheckRegistry,
+    StaticCheckRefusal,
+    DuplicateCheckNameError,
+    UnknownStaticCheckError,
+    MalformedCheckResultError,
+)
+from .judgment import (  # noqa: F401
+    Judgment,
+    JudgmentRefusal,
+    DuplicateCheckNameAcrossKindsError,
+    UnknownCheckError,
+    LateResultBeforeTerminalError,
+    JudgmentNotReadyError,
+    open_judgment,
+    dispatch_delegation,
+    resolve_delegation,
+    record_late_result,
+    run_static_check,
+    is_closed as judgment_is_closed,
+    close as close_judgment,
+)
