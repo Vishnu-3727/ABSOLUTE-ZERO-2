@@ -52,7 +52,17 @@ bounded, I/O-free, clock-free checks; ships one built-in
 
 `judgment` — the aggregate tying intake + delegations + static checks into
 a growing EvidenceRecord; `close()` seals it once every required check has
-reached a terminal state, ready for Phase 3's derivation."""
+reached a terminal state, ready for Phase 3's derivation.
+
+Phase 3: derivation (VAE/06 Phase 3) — a pure function from a closed
+evidence body + a versioned `DerivationPolicy` to a verdict, VAE/02 §3's
+five confidence dimensions, explicit uncertainty (§6), a VAE/02 §7 assurance
+level, and (on fail) one of VAE/01 §11's five failure causes. No events, no
+persistence, no choreography — those are Phase 4/5.
+
+`derivation` — `derive()` (pure) and `attach_derivation()` (fills
+evidence.py's Phase 1 derivation-account slot via `evidence.with_derivation_account`,
+never mutating the original record)."""
 from .rules import (  # noqa: F401
     RulesRefusal,
     MalformedRulesError,
@@ -72,11 +82,13 @@ from .evidence import (  # noqa: F401
     UnknownContributionKindError,
     MalformedEvidenceRecordError,
     DerivationAccountRefusedError,
+    DerivationAccountMalformedError,
     EvidenceItem,
     EvidenceRecord,
     build_evidence_item,
     build_evidence_record,
     append_item,
+    with_derivation_account,
     canonical as canonical_evidence,
     content_hash as evidence_content_hash,
 )
@@ -140,4 +152,30 @@ from .judgment import (  # noqa: F401
     run_static_check,
     is_closed as judgment_is_closed,
     close as close_judgment,
+)
+from .derivation import (  # noqa: F401
+    CONFIDENCE_LEVELS,
+    DIMENSIONS as CONFIDENCE_DIMENSIONS,
+    CANONICAL_LEVELS as VERIFICATION_LEVELS,
+    FAILURE_CAUSES,
+    ASSURANCE_LEVELS,
+    EXECUTION_FAILURE,
+    VERIFICATION_FAILURE,
+    EVIDENCE_INSUFFICIENCY,
+    INCONCLUSIVE_VERIFICATION,
+    CONTRADICTORY_EVIDENCE,
+    VERIFIED_HIGH,
+    VERIFIED_MODERATE,
+    VERIFIED_LOW,
+    UNVERIFIED,
+    VERIFICATION_FAILED,
+    VERDICT_PASSED,
+    VERDICT_FAILED,
+    DerivationRefusal,
+    UnknownVerificationLevelError,
+    MalformedDerivationPolicyError,
+    DerivationPolicy,
+    build_derivation_policy,
+    derive,
+    attach_derivation,
 )
