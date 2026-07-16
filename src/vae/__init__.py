@@ -62,7 +62,43 @@ persistence, no choreography — those are Phase 4/5.
 
 `derivation` — `derive()` (pure) and `attach_derivation()` (fills
 evidence.py's Phase 1 derivation-account slot via `evidence.with_derivation_account`,
-never mutating the original record)."""
+never mutating the original record).
+
+Phase 4: choreography (VAE/06 Phase 4) — persist-then-publish verdict
+emission (VAE-O5), storage-rejection loud absence (VAE-O6), and the
+pending-judgment projection as a rebuildable non-authority (VAE-O1, O10).
+No export commit landed for Phase 4 at the time; its two modules are
+exported here alongside Phase 5's.
+
+`emission` — `emit_verdict()`: derive -> persist via Storage -> publish
+exactly one verdict (or, on rejection, `fault.recorded` and no verdict).
+`build_verdict_envelope()` (Phase 5 addition): the pure name/id/payload
+construction, factored out so replay can reconstruct it without a second
+persist.
+
+`pending` — `PendingProjection` (open judgments, keyed by artifact ref)
+and `rebuild()`, reconstructing the projection from demand events +
+persisted records + the rules store alone — never resurrecting in-flight
+delegation state (VAE-O1).
+
+Phase 5: integration (VAE/06 Phase 5) — the composition root, six
+telemetry signal families (VAE/04 §8), and the static law enforcer
+(VAE-S7, VAE-S8).
+
+`telemetry` — six `emit_*` functions, one per VAE/04 §8 signal family,
+each reshaping already-computed facts into a reference-shaped payload for
+an injected sink (VAE-O8: unconditional, never sampled). Ships its own
+`TelemetrySinkDouble`.
+
+`runtime` — `Verification`, VAE's composition root: `handle_demand` ->
+per-check operations -> `try_close_and_emit` (VAE/04 §2/§5, wiring
+intake/judgment/derivation/emission/telemetry) and `replay()`, the
+byte-identical golden-artifact reconstruction VAE/05 §8 requires.
+
+`law_enforcer` — seven static AST/text scans (event canon, zero-seam,
+no time/random imports, append-only surface, persist-before-publish
+order, no producer identity in the verdict functions, dead vocabulary
+absence); `run()` raises loud on the first violated law."""
 from .rules import (  # noqa: F401
     RulesRefusal,
     MalformedRulesError,
@@ -179,3 +215,41 @@ from .derivation import (  # noqa: F401
     derive,
     attach_derivation,
 )
+from .emission import (  # noqa: F401
+    EMITTED,
+    REJECTED,
+    EmissionRefusal,
+    JudgmentNotClosedError,
+    AlreadyEmittedError,
+    EmissionResult,
+    build_verdict_envelope,
+    emit_verdict,
+)
+from .pending import (  # noqa: F401
+    PendingRefusal,
+    PendingEntry,
+    PendingProjection,
+    snapshot as pending_snapshot,
+    rebuild as pending_rebuild,
+)
+from .telemetry import (  # noqa: F401
+    SIGNAL_FAMILIES,
+    CHECK_PHASES as TELEMETRY_CHECK_PHASES,
+    TelemetryRefusal,
+    UnknownSignalFamilyError,
+    UnknownCheckPhaseError,
+    TelemetrySinkDouble,
+    emit_judgment_outcome,
+    emit_check_activity,
+    emit_coverage_readout,
+    emit_agreement_records,
+    emit_derivation_consistency,
+    emit_latency_demand,
+)
+from .runtime import (  # noqa: F401
+    RuntimeRefusal,
+    NoOpenJudgmentError,
+    ReplayMismatchError,
+    Verification,
+)
+from . import law_enforcer  # noqa: F401
