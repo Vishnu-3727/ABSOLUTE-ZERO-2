@@ -16,13 +16,17 @@ Common rules, enforced by one shared envelope check:
   relation in the envelope raises `MissingEvidenceCitationError` -- a
   derived artifact that cannot cite its evidence does not get built,
   which is "cite or stay silent" pushed down to the type system.
-- **Maturity Grade slot** (LIE/02 §4): canon puts a grade in every derived
-  record's envelope area. Phase 2 has no ladder logic, so the slot is a
-  placeholder pinned to `MATURITY_PROVISIONAL`: builders do not take a
-  maturity argument, and `from_dict` refuses any other stored value --
-  the same refuse-until-the-owning-phase discipline VAE's evidence.py
-  used for its derivation-account slot. The ladder (LIE/02 §4) fills this
-  for real in a later phase.
+- **Maturity Grade** (LIE/02 §4, Phase 3): the closed three-rung ladder
+  Provisional / Corroborated / Established, orthogonal to artifact kind.
+  Grades are COMPUTED at derivation (distillery.py, a pure function of
+  evidence set + ruleset thresholds) and passed to builders as data;
+  builders validate against the closed `MATURITY_GRADES` set and refuse
+  anything outside it. No promotion logic lives here -- no one promotes
+  knowledge; evidence does.
+- **Contested** (LIE/02 §7, Phase 3): the orthogonal flag on the
+  valence-bearing recurrence kinds (Pattern, AntiPattern) -- set by the
+  Distillery's same-signature/same-approach conflict detection, never
+  resolved here and never resolved automatically anywhere.
 
 Kind-specific shapes (LIE/02 §3):
 
@@ -68,11 +72,14 @@ INTELLIGENCE = "intelligence"
 CURATION = "curation"
 KNOWLEDGE_CLASSES = (EXPERIENCE, INTELLIGENCE, CURATION)
 
-# ponytail: single placeholder grade -- the Provisional/Corroborated/
-# Established ladder (LIE/02 §4) is derivation policy, owned by the phase
-# that builds the Distillery; until then every derived record is pinned
-# here and from_dict refuses anything else.
+# The closed Maturity Grade ladder (LIE/02 §4). Grade NAMES are canon;
+# the thresholds between rungs are ruleset data (ruleset.py), and the
+# computation is the Distillery's (distillery.py) -- this module only
+# refuses values outside the ladder.
 MATURITY_PROVISIONAL = "provisional"
+MATURITY_CORROBORATED = "corroborated"
+MATURITY_ESTABLISHED = "established"
+MATURITY_GRADES = (MATURITY_PROVISIONAL, MATURITY_CORROBORATED, MATURITY_ESTABLISHED)
 
 DERIVED_KINDS = ("lesson", "pattern", "anti_pattern", "recipe", "project_dossier",
                   "domain_knowledge_pack")
@@ -93,10 +100,9 @@ class MissingEvidenceCitationError(DerivedRefusal):
 
 
 class MaturityNotAvailableError(DerivedRefusal):
-    """A stored maturity value other than the Phase 2 placeholder was
-    encountered -- the grade ladder (LIE/02 §4) is not implemented yet;
-    accepting other values would smuggle ladder states in without the
-    logic that earns them."""
+    """A maturity value outside the closed LIE/02 §4 ladder
+    (`MATURITY_GRADES`) -- grades come from derivation over evidence,
+    never from caller invention."""
 
 
 class UnknownKnowledgeRecordError(DerivedRefusal):
@@ -139,9 +145,14 @@ def _validate_derived_envelope(envelope):
 
 
 def _check_maturity(value):
-    if value != MATURITY_PROVISIONAL:
-        raise MaturityNotAvailableError(
-            "derived.maturity_ladder_not_available:" + repr(value))
+    if value not in MATURITY_GRADES:
+        raise MaturityNotAvailableError("derived.unknown_maturity_grade:" + repr(value))
+    return value
+
+
+def _check_contested(value):
+    if not isinstance(value, bool):
+        raise MalformedDerivedRecordError("derived.bad_contested:" + repr(value))
     return value
 
 
@@ -151,13 +162,13 @@ def _check_maturity(value):
 class Lesson:
     envelope: Envelope
     statement: str
-    maturity: str  # always MATURITY_PROVISIONAL in Phase 2
+    maturity: str  # one of MATURITY_GRADES
 
 
-def build_lesson(envelope, statement):
+def build_lesson(envelope, statement, maturity=MATURITY_PROVISIONAL):
     _validate_derived_envelope(envelope)
     _require_nonempty_str("statement", statement)
-    return Lesson(envelope=envelope, statement=statement, maturity=MATURITY_PROVISIONAL)
+    return Lesson(envelope=envelope, statement=statement, maturity=_check_maturity(maturity))
 
 
 # -- Pattern / AntiPattern -----------------------------------------------------
@@ -167,12 +178,13 @@ class Pattern:
     envelope: Envelope
     approach: MappingProxyType
     maturity: str
+    contested: bool  # LIE/02 §7 -- set by the Distillery, never resolved here
 
 
-def build_pattern(envelope, approach):
+def build_pattern(envelope, approach, maturity=MATURITY_PROVISIONAL, contested=False):
     _validate_derived_envelope(envelope)
     return Pattern(envelope=envelope, approach=_freeze_mapping("approach", approach),
-                    maturity=MATURITY_PROVISIONAL)
+                    maturity=_check_maturity(maturity), contested=_check_contested(contested))
 
 
 @dataclass(frozen=True)
@@ -181,13 +193,16 @@ class AntiPattern:
     approach: MappingProxyType
     consequence: str  # the observed consequence (LIE/01 §5.3)
     maturity: str
+    contested: bool
 
 
-def build_anti_pattern(envelope, approach, consequence):
+def build_anti_pattern(envelope, approach, consequence, maturity=MATURITY_PROVISIONAL,
+                        contested=False):
     _validate_derived_envelope(envelope)
     _require_nonempty_str("consequence", consequence)
     return AntiPattern(envelope=envelope, approach=_freeze_mapping("approach", approach),
-                        consequence=consequence, maturity=MATURITY_PROVISIONAL)
+                        consequence=consequence, maturity=_check_maturity(maturity),
+                        contested=_check_contested(contested))
 
 
 # -- Recipe ---------------------------------------------------------------------
@@ -199,10 +214,10 @@ class Recipe:
     maturity: str
 
 
-def build_recipe(envelope, steps):
+def build_recipe(envelope, steps, maturity=MATURITY_PROVISIONAL):
     _validate_derived_envelope(envelope)
     return Recipe(envelope=envelope, steps=_str_tuple("steps", steps),
-                   maturity=MATURITY_PROVISIONAL)
+                   maturity=_check_maturity(maturity))
 
 
 # -- ProjectDossier ---------------------------------------------------------------
@@ -233,7 +248,7 @@ class ProjectDossier:
 
 
 def build_project_dossier(envelope, project, decision_refs, episode_refs, lesson_refs,
-                           relationships):
+                           relationships, maturity=MATURITY_PROVISIONAL):
     _validate_derived_envelope(envelope)
     _require_nonempty_str("project", project)
     rel_tuple = tuple(relationships) if isinstance(relationships, (tuple, list)) else None
@@ -248,7 +263,7 @@ def build_project_dossier(envelope, project, decision_refs, episode_refs, lesson
         decision_refs=_str_tuple("decision_refs", decision_refs, allow_empty=True),
         episode_refs=_str_tuple("episode_refs", episode_refs, allow_empty=True),
         lesson_refs=_str_tuple("lesson_refs", lesson_refs, allow_empty=True),
-        relationships=rel_tuple, maturity=MATURITY_PROVISIONAL)
+        relationships=rel_tuple, maturity=_check_maturity(maturity))
 
 
 # -- DomainKnowledgePack ------------------------------------------------------------
@@ -260,11 +275,11 @@ class DomainKnowledgePack:
     maturity: str
 
 
-def build_domain_knowledge_pack(envelope, member_refs):
+def build_domain_knowledge_pack(envelope, member_refs, maturity=MATURITY_PROVISIONAL):
     _validate_derived_envelope(envelope)
     return DomainKnowledgePack(envelope=envelope,
                                 member_refs=_str_tuple("member_refs", member_refs),
-                                maturity=MATURITY_PROVISIONAL)
+                                maturity=_check_maturity(maturity))
 
 
 # -- knowledge-class tagging (LIE/01 §2) ---------------------------------------
@@ -294,11 +309,11 @@ def to_dict(record):
                 "maturity": record.maturity}
     if isinstance(record, Pattern):
         return {"kind": "pattern", "envelope": envelope_dict, "approach": dict(record.approach),
-                "maturity": record.maturity}
+                "maturity": record.maturity, "contested": record.contested}
     if isinstance(record, AntiPattern):
         return {"kind": "anti_pattern", "envelope": envelope_dict,
                 "approach": dict(record.approach), "consequence": record.consequence,
-                "maturity": record.maturity}
+                "maturity": record.maturity, "contested": record.contested}
     if isinstance(record, Recipe):
         # list, in step order -- NEVER sorted; order is the recipe
         return {"kind": "recipe", "envelope": envelope_dict, "steps": list(record.steps),
@@ -322,24 +337,26 @@ def from_dict(data):
     kind = data.get("kind")
     if kind not in DERIVED_KINDS:
         raise MalformedDerivedRecordError("derived.from_dict_unknown_kind:" + repr(kind))
-    _check_maturity(data["maturity"])
+    maturity = data["maturity"]
     envelope = envelope_from_dict(data["envelope"])
     if kind == "lesson":
-        return build_lesson(envelope, data["statement"])
+        return build_lesson(envelope, data["statement"], maturity=maturity)
     if kind == "pattern":
-        return build_pattern(envelope, data["approach"])
+        return build_pattern(envelope, data["approach"], maturity=maturity,
+                              contested=data["contested"])
     if kind == "anti_pattern":
-        return build_anti_pattern(envelope, data["approach"], data["consequence"])
+        return build_anti_pattern(envelope, data["approach"], data["consequence"],
+                                   maturity=maturity, contested=data["contested"])
     if kind == "recipe":
-        return build_recipe(envelope, tuple(data["steps"]))
+        return build_recipe(envelope, tuple(data["steps"]), maturity=maturity)
     if kind == "project_dossier":
         relationships = tuple(build_project_relationship(r["other_project"],
                                                           tuple(r["shared_facets"]))
                                for r in data["relationships"])
         return build_project_dossier(envelope, data["project"], tuple(data["decision_refs"]),
                                       tuple(data["episode_refs"]), tuple(data["lesson_refs"]),
-                                      relationships)
-    return build_domain_knowledge_pack(envelope, tuple(data["member_refs"]))
+                                      relationships, maturity=maturity)
+    return build_domain_knowledge_pack(envelope, tuple(data["member_refs"]), maturity=maturity)
 
 
 if __name__ == "__main__":
@@ -473,13 +490,31 @@ if __name__ == "__main__":
         assert from_dict(d) == artifact
         assert to_dict(from_dict(d)) == d
 
-    # maturity ladder refused until its owning phase
+    # maturity: closed ladder -- computed grades round-trip; inventions refused
+    graded = build_lesson(_derived_env("lesson:l4"), "s", maturity=MATURITY_ESTABLISHED)
+    assert from_dict(to_dict(graded)).maturity == MATURITY_ESTABLISHED
+    try:
+        build_lesson(_derived_env("lesson:l5"), "s", maturity="legendary")
+        raise SystemExit("grade outside the ladder accepted at build")
+    except MaturityNotAvailableError:
+        pass
     tampered = to_dict(lesson)
-    tampered["maturity"] = "established"
+    tampered["maturity"] = "legendary"
     try:
         from_dict(tampered)
-        raise SystemExit("non-placeholder maturity accepted")
+        raise SystemExit("grade outside the ladder accepted from dict")
     except MaturityNotAvailableError:
+        pass
+
+    # contested: bool-only, defaults False, round-trips
+    contested_pat = build_pattern(_derived_env("pattern:p2"), {"a": 1}, contested=True)
+    assert contested_pat.contested is True
+    assert from_dict(to_dict(contested_pat)).contested is True
+    assert pattern.contested is False
+    try:
+        build_pattern(_derived_env("pattern:p3"), {"a": 1}, contested="yes")
+        raise SystemExit("non-bool contested accepted")
+    except MalformedDerivedRecordError:
         pass
 
     print("derived selftest ok")

@@ -263,17 +263,26 @@ class DomainKnowledgePackTests(unittest.TestCase):
 
 
 class MaturityPlaceholderTests(unittest.TestCase):
-    def test_every_kind_pinned_to_provisional(self):
+    """Phase 3 replaced the pinned placeholder with the closed LIE/02 §4
+    ladder: grades are computed at derivation and passed as data; the
+    default stays Provisional; anything outside the ladder is refused."""
+
+    def test_every_kind_defaults_to_provisional(self):
         for artifact in self._all_kinds():
             self.assertEqual(artifact.maturity, derived.MATURITY_PROVISIONAL)
 
-    def test_builders_take_no_maturity_argument(self):
-        with self.assertRaises(TypeError):
-            derived.build_lesson(_derived_env(), "s", maturity="established")
+    def test_builders_refuse_grades_outside_the_ladder(self):
+        with self.assertRaises(derived.MaturityNotAvailableError):
+            derived.build_lesson(_derived_env(), "s", maturity="legendary")
 
-    def test_from_dict_refuses_non_placeholder_maturity(self):
+    def test_builders_accept_computed_ladder_grades(self):
+        lesson = derived.build_lesson(_derived_env(), "s",
+                                       maturity=derived.MATURITY_ESTABLISHED)
+        self.assertEqual(lesson.maturity, derived.MATURITY_ESTABLISHED)
+
+    def test_from_dict_refuses_maturity_outside_the_ladder(self):
         d = derived.to_dict(derived.build_lesson(_derived_env(), "s"))
-        d["maturity"] = "established"
+        d["maturity"] = "legendary"
         with self.assertRaises(derived.MaturityNotAvailableError):
             derived.from_dict(d)
 

@@ -74,10 +74,9 @@ optional `instead-of` relation), Recipe (ordered steps), ProjectDossier
 (per-project refs + `ProjectRelationship` statements citing shared
 facets), DomainKnowledgePack (declared facet scope + member refs). Every
 derived record requires a `DerivationAttestation` envelope and at least
-one `evidenced-by` relation (INV-4 at construction time); the Maturity
-Grade slot is pinned to `MATURITY_PROVISIONAL` until the ladder's owning
-phase. `knowledge_class()` derives experience/intelligence/curation
-purely from record type.
+one `evidenced-by` relation (INV-4 at construction time).
+`knowledge_class()` derives experience/intelligence/curation purely from
+record type.
 
 `envelope` (extended) — `DerivationAttestation`: the derived-record
 attestation flavor (LIE/01 §3), wrapping the `DerivationState` triple;
@@ -86,7 +85,32 @@ derived records structurally require it.
 
 `decision` (extended) — `ARCHITECTURE_FACET` + `is_architecture_record()`:
 Architecture Records are Decisions with architectural scope, a facet, not
-a subclass (LIE/01 §4.2)."""
+a subclass (LIE/01 §4.2).
+
+Phase 3: the Distillery (LIE/02) — the deterministic intelligence
+compiler.
+
+`ruleset` — `DerivationRuleset`: versioned, declarative rules-as-data;
+every threshold (pattern/recipe recurrence, maturity rungs) and every
+declared pack scope is validated data, none baked into the compiler.
+
+`distillery` — `regenerate(ledger, overlay, ruleset) -> Layer`: full
+regeneration as the only compiler (reference semantics, LIE/03 §6);
+`Signature` + `evidence_sets` (grouping by facet profile, partitioned by
+verdict polarity); all six artifact kinds compiled per LIE/02 §3 with
+Maturity Grades as a pure function of evidence + ruleset thresholds;
+Contested set on same-signature/same-approach opposite-valence pairs with
+NO automatic resolution ever (contradiction_resolution rulings direct
+which side fresh derivation follows); deprecation/supersession rulings
+exclude records from fresh evidence sets; `instead-of` links compiled,
+never authored; `citation_chain` walks artifact → evidence → attestation
+refs, loud on any unresolvable link; `layer_canonical` is the Equivalence
+Obligation seam (byte-identical layer comparison, LIE/02 §9).
+
+`derived` (extended) — the real LIE/02 §4 Maturity ladder
+(`MATURITY_GRADES`, closed three, computed at derivation) replacing the
+Phase 2 pinned placeholder, plus the `contested` flag on
+Pattern/AntiPattern."""
 from .vocabulary import (  # noqa: F401
     VocabularyRefusal,
     MalformedVocabularyError,
@@ -139,6 +163,9 @@ from .derived import (  # noqa: F401
     CURATION,
     KNOWLEDGE_CLASSES,
     MATURITY_PROVISIONAL,
+    MATURITY_CORROBORATED,
+    MATURITY_ESTABLISHED,
+    MATURITY_GRADES,
     DERIVED_KINDS,
     DerivedRefusal,
     MalformedDerivedRecordError,
@@ -221,3 +248,30 @@ from .gate import (  # noqa: F401
     AdmissionGate,
 )
 from .contracts import DistilleryPort, AdvisoryPort, CuratorPort  # noqa: F401
+from .ruleset import (  # noqa: F401
+    RulesetRefusal,
+    MalformedRulesetError,
+    DerivationRuleset,
+    build_ruleset,
+    default_ruleset,
+    to_dict as ruleset_to_dict,
+    from_dict as ruleset_from_dict,
+)
+from .distillery import (  # noqa: F401
+    POSITIVE,
+    NEGATIVE,
+    POLARITIES,
+    DistilleryRefusal,
+    UnknownVerdictError,
+    UnwalkableChainError,
+    MalformedCompilerInputError,
+    Signature,
+    Layer,
+    signature_of,
+    polarity_of,
+    evidence_sets,
+    regenerate,
+    layer_to_dict,
+    layer_canonical,
+    citation_chain,
+)
