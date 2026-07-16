@@ -60,6 +60,23 @@ and "in force." Zero runtime evaluation, zero enforcement (AC-1) — turns a
 position-stamped policy set into a validated, totally-decided, immutable
 candidate snapshot, or a rejection that changes nothing (AC-3).
 
+Phase 3: the Evaluator (SGPE/03) — runtime policy evaluation as a pure
+function: Decision = f(snapshot version, grant-slice position, evaluation
+ruleset version, canonical Question). Retrieval, not reasoning (EV-3);
+never reads the Store, never compiles, never fetches grants (EV-2).
+
+`evaluator` — `evaluate(snapshot_version, snapshot,
+grant_slice_position, grant_slice, question, evaluation_ruleset_version,
+bus=None, memo=None)`: the 7-step lifecycle (well-formedness, memo probe,
+index match, final check, exact-signature grant overlay, binding-
+constraint attachment, Decision + trace); returns a `Decision` (one
+effect + binding ceilings + byte-stable citation-triple explanation +
+replay stamps, EV-4) or an `IllPosedVerdict` (protocol-error class,
+never a DENY, EV-6); `build_question()` is the canonical Question
+constructor; `ask_signature()` is what REQUIRE_APPROVAL emits and grants
+are keyed to (EV-5); the caller-owned memo dict is keyed by every
+answer-changing input and semantically invisible (EV-7/EV-8).
+
 `compiler` — `compile_snapshot(store, position, compiler_ruleset_version,
 bus=None)`: the 8-stage pipeline (assembly, vocabulary, scope & modifier
 legality, dependency, totality, conflict detection, construction,
@@ -217,4 +234,36 @@ from .compiler import (  # noqa: F401
     finding_to_dict,
     report_to_dict,
     snapshot_to_dict,
+)
+from .evaluator import (  # noqa: F401
+    CURRENT_EVALUATION_RULESET_VERSION,
+    SUPPORTED_EVALUATION_RULESET_VERSIONS,
+    GRANT,
+    REVOCATION,
+    ILLPOSED_NOT_A_QUESTION,
+    ILLPOSED_NON_CANONICAL,
+    ILLPOSED_UNKNOWN_ACTION,
+    ILLPOSED_MISSING_FACTS,
+    ILLPOSED_UNDECLARED_FACTS,
+    ILLPOSED_INCOMPARABLE,
+    EvaluatorRefusal,
+    MalformedEvaluationInputError,
+    UnsupportedEvaluationRulesetVersionError,
+    SnapshotIntegrityError,
+    MalformedGrantRecordError,
+    MalformedQuestionError,
+    Question,
+    GrantRecord,
+    Decision,
+    IllPosedVerdict,
+    build_question,
+    build_grant_record,
+    question_to_dict,
+    question_from_dict,
+    question_hash,
+    ask_signature,
+    decision_to_dict,
+    decision_bytes,
+    illposed_to_dict,
+    evaluate,
 )
