@@ -101,6 +101,21 @@ request-scoped appends enter, EPR-2/EPR-4) and projects to the
 Evaluator's `GrantRecord` shape; `effective_policy_from_dict()` is the
 replay entry point (EPR-7).
 
+Phase 5: System Integration (SGPE/05) — the OS weave, pure composition.
+
+`runtime` — `GovernanceRuntime(store, ledger, bus)`: the operating
+system's one handle on SGPE; `admit()` (Kernel seam, Resolver-bound,
+fail-closed), `view_for()` (rebuild from the RSM-persisted stamp),
+`snapshot_for()` (derived snapshots regenerated through the R5 oracle,
+AC-9), `route_approval()`/`route_revocation()` (the Kernel-routed
+request-scoped Ledger door). `RequestGovernance` is the frozen EP view
+a request carries: `consult()` stamps the consulted ledger position
+per Decision (EPR-4), `replay()` re-runs a recorded consultation
+bus-silent under the recorded ruleset version (EPR-7/EV-9), `stamp()`
+is the RSM persistence shape. `approval_ask_payload()` and
+`resolve_citation()` are IVS's render surface (EV §5: resolution is
+the reader's act).
+
 `compiler` — `compile_snapshot(store, position, compiler_ruleset_version,
 bus=None)`: the 8-stage pipeline (assembly, vocabulary, scope & modifier
 legality, dependency, totality, conflict detection, construction,
@@ -318,4 +333,14 @@ from .resolver import (  # noqa: F401
     consultation_slice,
     effective_policy_to_dict,
     effective_policy_from_dict,
+)
+from .runtime import (  # noqa: F401
+    RuntimeRefusal,
+    MalformedRuntimeInputError,
+    UnknownSnapshotVersionError,
+    ApprovalRoutingError,
+    GovernanceRuntime,
+    RequestGovernance,
+    approval_ask_payload,
+    resolve_citation,
 )
