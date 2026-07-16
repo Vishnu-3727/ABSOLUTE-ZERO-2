@@ -24,3 +24,18 @@ and serves recommendation objects; UMS is a peer with strict separation
 (identifiers cross, content never does — INV-9). LIE naming wins: `learning.md`
 and `memory.md` are wrong on this point and should be read as if they named
 the Advisory Interface (LIE) instead of UMS.
+
+## C3 — reading of SGPE INV-6 ("Effective Policy frozen") vs mid-request grants
+
+**Phase 4 design: 2026-07-16.** `SGPE/00-architecture-blueprint.md` INV-6
+freezes a request's Effective Policy at admission; SGPE/00 §3.5's approval
+loop lets a running request obtain grants after a REQUIRE_APPROVAL. Both are
+canon and reconcile per `SGPE/04-resolver-grant-ledger.md` §2.3: what is
+frozen is the *binding rule* — `(snapshot version, admission ledger position
+P₀, request id)` — not the slice's row count. The slice grows in exactly one
+way: Ledger appends scope-bound to *this request id* (answers to asks the
+request itself raised, and their revocations). No snapshot activation and no
+principal/project-width append after P₀ ever enters a running request's
+world. Every consultation stamps the ledger position it used, so replay is
+exact. INV-6 should be read with this refinement; SGPE/04 §2.3 is the
+authoritative wording.
