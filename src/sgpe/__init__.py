@@ -77,6 +77,30 @@ constructor; `ask_signature()` is what REQUIRE_APPROVAL emits and grants
 are keyed to (EV-5); the caller-owned memo dict is keyed by every
 answer-changing input and semantically invisible (EV-7/EV-8).
 
+Phase 4: the Grant Ledger and Effective Policy Resolver (SGPE/04 +
+ERRATA C3) — the runtime policy context of a request.
+
+`ledger` — `GrantLedger`: the append-only, monotonic-position record of
+approval outcomes, a SIBLING record to the Store (own storage namespace,
+same discipline). Two record kinds only (GL-3): `append_grant()` and
+`append_revocation()` (a new record naming a grant id, inheriting its
+signature and scope binding — no supersession or edit semantics).
+Stores, never judges (GL-2/GL-5): signatures opaque, bounds stored as
+condition.py data, validity is the Evaluator's evaluation-time call.
+`slice()` gives deterministic position-stamped reads (GL-6);
+`export_log()`/`rebuild_from_log()` make replay literal (GL-1). Every
+append is a `grant.recorded`/`grant.revoked` event (GL-7).
+
+`resolver` — stateless module functions (EPR-6): `admit(read_active_
+snapshot_version, ledger, request_id, principal, project)` performs the
+two atomic admission reads and emits the immutable `EffectivePolicy`
+binding (EPR-1), failing closed on a missing snapshot or unreachable
+Ledger (EPR-5); `consultation_slice(ledger, ep, position)` implements
+ERRATA C3's closed growth rule (standing world frozen at P₀, only
+request-scoped appends enter, EPR-2/EPR-4) and projects to the
+Evaluator's `GrantRecord` shape; `effective_policy_from_dict()` is the
+replay entry point (EPR-7).
+
 `compiler` — `compile_snapshot(store, position, compiler_ruleset_version,
 bus=None)`: the 8-stage pipeline (assembly, vocabulary, scope & modifier
 legality, dependency, totality, conflict detection, construction,
@@ -266,4 +290,32 @@ from .evaluator import (  # noqa: F401
     decision_bytes,
     illposed_to_dict,
     evaluate,
+)
+from .ledger import (  # noqa: F401
+    SCOPE_KINDS,
+    LedgerRefusal,
+    MalformedGrantAppendError,
+    UnknownGrantIdError,
+    LedgerAppendRejectedError,
+    ScopeBinding,
+    GrantProvenance,
+    LedgerRecord,
+    GrantLedger,
+    build_scope_binding,
+    build_grant_provenance,
+    record_to_dict as ledger_record_to_dict,
+    record_from_dict as ledger_record_from_dict,
+)
+from .resolver import (  # noqa: F401
+    REFUSED_NO_ACTIVE_SNAPSHOT,
+    REFUSED_SNAPSHOT_FACT_UNREADABLE,
+    REFUSED_LEDGER_UNREACHABLE,
+    ResolverRefusal,
+    MalformedAdmissionInputError,
+    AdmissionRefusedError,
+    EffectivePolicy,
+    admit,
+    consultation_slice,
+    effective_policy_to_dict,
+    effective_policy_from_dict,
 )

@@ -1,6 +1,6 @@
 """SGPE event canon (SGPE/05 §4), shared by the Policy Store (Phase 1),
-the Admission Compiler (Phase 2), and the Evaluator (Phase 3). Seven
-closed names, no others, ever:
+the Admission Compiler (Phase 2), the Evaluator (Phase 3), and the Grant
+Ledger (Phase 4). Nine closed names, no others, ever:
 
 - `policy.authored` / `policy.deprecated` -- Store: a document version or
   a deprecation marker was appended (SGPE/01 §9).
@@ -14,6 +14,11 @@ closed names, no others, ever:
 - `policy.decided` / `policy.illposed` -- Evaluator: one Decision or one
   ill-posed verdict was produced (SGPE/03 §5, §9; EV-10 -- Observability
   is the sole audit sink, the Evaluator persists nothing).
+- `grant.recorded` / `grant.revoked` -- Grant Ledger: one grant or one
+  revocation record was appended (SGPE/04 §1; GL-7 -- every append is a
+  bus event, the Ledger keeps no audit trail beyond itself). The Resolver
+  emits nothing: admission refusals surface through the Kernel's existing
+  admission events (SGPE/04 §3).
 
 Every publisher shares this one module (not a separate copy per phase)
 because the event canon is one closed vocabulary for the whole engine,
@@ -22,7 +27,7 @@ event canon," and splitting it would risk two components drifting on
 what "policy.activated" means."""
 
 PUBLISHED = ("policy.authored", "policy.deprecated", "policy.compiled", "policy.rejected", "policy.activated",
-             "policy.decided", "policy.illposed")
+             "policy.decided", "policy.illposed", "grant.recorded", "grant.revoked")
 
 CONSUMED = ()
 
@@ -77,11 +82,12 @@ if __name__ == "__main__":
         emit(bus, name, "id:" + name, "subj", {"ref": name})
         assert bus.messages(name)[-1]["event_name"] == name
 
-    # confirm the full closed set -- Store's two, Compiler's three, and the
-    # Evaluator's two (SGPE/03 §5/§9) -- is usable, and nothing else.
+    # confirm the full closed set -- Store's two, Compiler's three, the
+    # Evaluator's two, and the Ledger's two -- is usable, and nothing else.
     assert set(PUBLISHED) == {"policy.authored", "policy.deprecated", "policy.compiled",
                                "policy.rejected", "policy.activated",
-                               "policy.decided", "policy.illposed"}
+                               "policy.decided", "policy.illposed",
+                               "grant.recorded", "grant.revoked"}
 
     try:
         build_envelope("policy.made_up", "e", "s", {})
