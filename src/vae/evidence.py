@@ -191,6 +191,24 @@ def content_hash(record):
     return hashlib.sha256(canonical(record)).hexdigest()
 
 
+def from_canonical(data):
+    """Phase 5's ONLY path back from Storage-persisted bytes to an
+    `EvidenceRecord` (VAE-K2, VAE/05 §8: "every verdict event re-derives
+    from its persisted evidence record" -- replay reconstructs a record
+    from durable bytes alone, zero live reads). Inverse of `canonical()`/
+    `to_dict()`: items are rebuilt in their stored append order (order is
+    meaningful, VAE-M4) and whatever derivation account was persisted is
+    restored as-is -- this is deserialization, not derivation; Phase 3's
+    `derive()` is the only place account content is ever computed."""
+    obj = json.loads(data.decode())
+    items = tuple(
+        EvidenceItem(rule=i["rule"], artifact_ref=i["artifact_ref"], source=i["source"],
+                     result=i["result"], contribution_kind=i["contribution_kind"], level=i["level"])
+        for i in obj["items"])
+    return EvidenceRecord(artifact_ref=obj["artifact_ref"], rules_version=obj["rules_version"],
+                           items=items, derivation_account=obj["derivation_account"])
+
+
 if __name__ == "__main__":
     rec = build_evidence_record("artifact:a1", 1)
     assert rec.items == ()
@@ -264,5 +282,20 @@ if __name__ == "__main__":
     rec_reordered = append_item(append_item(append_item(
         build_evidence_record("artifact:a1", 1), item_b), item_a), absence)
     assert content_hash(rec_reordered) != content_hash(rec3)
+
+    # from_canonical: round trip, including an account-bearing record ------
+    rec3_bytes = canonical(rec3)
+    rec3_restored = from_canonical(rec3_bytes)
+    assert rec3_restored.items == rec3.items
+    assert rec3_restored.artifact_ref == rec3.artifact_ref
+    assert rec3_restored.rules_version == rec3.rules_version
+    assert rec3_restored.derivation_account is None
+    assert content_hash(rec3_restored) == content_hash(rec3)
+
+    accounted = with_derivation_account(build_evidence_record("artifact:a2", 1, items=(item_a,)),
+                                         {"verdict": "passed", "assurance_level": "Unverified"})
+    accounted_restored = from_canonical(canonical(accounted))
+    assert accounted_restored.derivation_account == accounted.derivation_account
+    assert content_hash(accounted_restored) == content_hash(accounted)
 
     print("evidence selftest ok")
