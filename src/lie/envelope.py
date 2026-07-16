@@ -6,7 +6,15 @@ is a rejection, not a partial admit"). Five sections, every one required:
 - **Attestation** -- for experience records, the VAE-verdict/closed-trace
   reference that admitted the record, plus the facet-vocabulary version in
   force at admission (R2, LIE/04 §2 friction resolution: "the vocabulary
-  version in force at admission is part of that provenance").
+  version in force at admission is part of that provenance"). For derived
+  records (Phase 2, LIE/01 §3: "for derived records, the derivation
+  process version and the ledger state it was computed from"), the
+  attestation is a `DerivationAttestation` wrapping the `DerivationState`
+  triple -- which already names exactly those two things (ruleset version
+  + ledger/overlay positions), so no new provenance concept is invented.
+  Which attestation flavor a record kind requires is enforced by that
+  record kind's own builder (episode/decision demand `Attestation`;
+  derived.py demands `DerivationAttestation`), not here.
 - **Origin** -- project, environment, and *when* (an opaque, caller-
   supplied value -- this module reads no clock, INV-8); contributor is
   recorded as provenance metadata only, never authority (LIE/01 §8).
@@ -25,6 +33,9 @@ rather than admitting a partial envelope -- LIE/04 §6's "rejection, not
 partial admit" rule enforced at construction, one layer below the Gate."""
 from dataclasses import dataclass
 import json
+
+from .derivation_state import DerivationState, from_dict as derivation_state_from_dict, \
+    to_dict as derivation_state_to_dict
 
 RELATION_TYPES = ("enacts", "recovers", "follows", "evidenced-by", "instead-of", "supersedes", "about")
 
@@ -68,6 +79,23 @@ def build_attestation(attestation_ref, trace_closed, vocabulary_version):
 
 
 @dataclass(frozen=True)
+class DerivationAttestation:
+    """The attestation flavor for derived (intelligence-layer) records
+    (LIE/01 §3): the derivation process version and the ledger state the
+    artifact was computed from -- both already named completely by the
+    `DerivationState` triple (derivation_state.py), so this wraps it
+    rather than restating its components."""
+    derivation_state: DerivationState
+
+
+def build_derivation_attestation(derivation_state):
+    if not isinstance(derivation_state, DerivationState):
+        raise EnvelopeIncompleteError(
+            "envelope.bad_derivation_state:" + repr(derivation_state))
+    return DerivationAttestation(derivation_state=derivation_state)
+
+
+@dataclass(frozen=True)
 class Origin:
     project: str          # identifiability check target (Gate provenance check)
     environment: str
@@ -102,7 +130,7 @@ def build_relation(relation_type, target_id):
 @dataclass(frozen=True)
 class Envelope:
     identity: str
-    attestation: Attestation
+    attestation: object  # Attestation (experience) or DerivationAttestation (derived)
     origin: Origin
     facets: tuple      # tuple of str
     relations: tuple   # tuple of Relation
@@ -110,7 +138,7 @@ class Envelope:
 
 def build_envelope(identity, attestation, origin, facets, relations):
     _require_nonempty_str("identity", identity)
-    if not isinstance(attestation, Attestation):
+    if not isinstance(attestation, (Attestation, DerivationAttestation)):
         raise EnvelopeIncompleteError("envelope.attestation_not_built:" + repr(attestation))
     if not isinstance(origin, Origin):
         raise EnvelopeIncompleteError("envelope.origin_not_built:" + repr(origin))
@@ -134,14 +162,20 @@ def build_envelope(identity, attestation, origin, facets, relations):
 
 # -- human-readable serialization (INV-7) ------------------------------------
 
+def _attestation_to_dict(attestation):
+    if isinstance(attestation, DerivationAttestation):
+        return {"derivation_state": derivation_state_to_dict(attestation.derivation_state)}
+    return {
+        "attestation_ref": attestation.attestation_ref,
+        "trace_closed": attestation.trace_closed,
+        "vocabulary_version": attestation.vocabulary_version,
+    }
+
+
 def to_dict(envelope):
     return {
         "identity": envelope.identity,
-        "attestation": {
-            "attestation_ref": envelope.attestation.attestation_ref,
-            "trace_closed": envelope.attestation.trace_closed,
-            "vocabulary_version": envelope.attestation.vocabulary_version,
-        },
+        "attestation": _attestation_to_dict(envelope.attestation),
         "origin": {
             "project": envelope.origin.project,
             "environment": envelope.origin.environment,
@@ -155,9 +189,13 @@ def to_dict(envelope):
 
 
 def from_dict(data):
-    attestation = build_attestation(data["attestation"]["attestation_ref"],
-                                     data["attestation"]["trace_closed"],
-                                     data["attestation"]["vocabulary_version"])
+    att_data = data["attestation"]
+    if "derivation_state" in att_data:
+        attestation = build_derivation_attestation(
+            derivation_state_from_dict(att_data["derivation_state"]))
+    else:
+        attestation = build_attestation(att_data["attestation_ref"], att_data["trace_closed"],
+                                         att_data["vocabulary_version"])
     origin = build_origin(data["origin"]["project"], data["origin"]["environment"],
                            data["origin"]["contributor"], data["origin"]["occurred_at"])
     relations = tuple(build_relation(r["relation_type"], r["target_id"]) for r in data["relations"])
@@ -238,5 +276,25 @@ if __name__ == "__main__":
     restored = from_dict(d1)
     assert restored == env
     assert canonical(env) == canonical(restored)
+
+    # derivation-flavored attestation (Phase 2, LIE/01 §3) ------------------
+    from .derivation_state import build_derivation_state
+
+    der_att = build_derivation_attestation(build_derivation_state(3, 1, 1))
+    ev_rel = build_relation("evidenced-by", "episode:e1")
+    der_env = build_envelope("lesson:l1", der_att, origin, ("ros2",), (ev_rel,))
+    assert der_env.attestation.derivation_state.ledger_position == 3
+
+    # unbuilt derivation state refused
+    try:
+        build_derivation_attestation({"ledger_position": 3})
+        raise SystemExit("unbuilt derivation state accepted")
+    except EnvelopeIncompleteError:
+        pass
+
+    # derived envelope round-trips through the same to_dict/from_dict
+    der_restored = from_dict(to_dict(der_env))
+    assert der_restored == der_env
+    assert canonical(der_env) == canonical(der_restored)
 
     print("envelope selftest ok")

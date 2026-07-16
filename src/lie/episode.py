@@ -14,7 +14,8 @@ cannot be completed already raised at `build_envelope` time (LIE/04 §6);
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .envelope import Envelope, from_dict as envelope_from_dict, to_dict as envelope_to_dict
+from .envelope import Attestation, Envelope, from_dict as envelope_from_dict, \
+    to_dict as envelope_to_dict
 
 
 class EpisodeRefusal(Exception):
@@ -43,6 +44,12 @@ class Episode:
 def build_episode(envelope, situation, approach, outcome, cost):
     if not isinstance(envelope, Envelope):
         raise MalformedEpisodeError("episode.envelope_not_built:" + repr(envelope))
+    if not isinstance(envelope.attestation, Attestation):
+        # Experience records are VAE-attested only (INV-1); a derivation-
+        # flavored attestation (Phase 2, derived.py) has no path into the
+        # experience layer.
+        raise MalformedEpisodeError(
+            "episode.requires_vae_attestation:" + repr(type(envelope.attestation)))
     return Episode(envelope=envelope,
                     situation=_freeze_part("situation", situation),
                     approach=_freeze_part("approach", approach),

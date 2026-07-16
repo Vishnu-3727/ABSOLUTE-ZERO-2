@@ -63,7 +63,30 @@ rejection records to Observability, never the Ledger (R1).
 
 `contracts` — `DistilleryPort`, `AdvisoryPort`, `CuratorPort`: minimal
 `typing.Protocol` boundary seams for the three subsystems this phase does
-not implement."""
+not implement.
+
+Phase 2: engineering knowledge model (LIE/01) — the intelligence layer's
+six derived artifact kinds as immutable record MODELS only; zero
+compilation/derivation logic (Distillery is Phase 3+).
+
+`derived` — Lesson, Pattern, AntiPattern (+ observed consequence,
+optional `instead-of` relation), Recipe (ordered steps), ProjectDossier
+(per-project refs + `ProjectRelationship` statements citing shared
+facets), DomainKnowledgePack (declared facet scope + member refs). Every
+derived record requires a `DerivationAttestation` envelope and at least
+one `evidenced-by` relation (INV-4 at construction time); the Maturity
+Grade slot is pinned to `MATURITY_PROVISIONAL` until the ladder's owning
+phase. `knowledge_class()` derives experience/intelligence/curation
+purely from record type.
+
+`envelope` (extended) — `DerivationAttestation`: the derived-record
+attestation flavor (LIE/01 §3), wrapping the `DerivationState` triple;
+experience records structurally refuse it (episode/decision builders) and
+derived records structurally require it.
+
+`decision` (extended) — `ARCHITECTURE_FACET` + `is_architecture_record()`:
+Architecture Records are Decisions with architectural scope, a facet, not
+a subclass (LIE/01 §4.2)."""
 from .vocabulary import (  # noqa: F401
     VocabularyRefusal,
     MalformedVocabularyError,
@@ -79,10 +102,12 @@ from .envelope import (  # noqa: F401
     EnvelopeIncompleteError,
     UnknownRelationTypeError,
     Attestation,
+    DerivationAttestation,
     Origin,
     Relation,
     Envelope,
     build_attestation,
+    build_derivation_attestation,
     build_origin,
     build_relation,
     build_envelope,
@@ -99,12 +124,44 @@ from .episode import (  # noqa: F401
     from_dict as episode_from_dict,
 )
 from .decision import (  # noqa: F401
+    ARCHITECTURE_FACET,
     DecisionRefusal,
     MalformedDecisionError,
     Decision,
     build_decision,
+    is_architecture_record,
     to_dict as decision_to_dict,
     from_dict as decision_from_dict,
+)
+from .derived import (  # noqa: F401
+    EXPERIENCE,
+    INTELLIGENCE,
+    CURATION,
+    KNOWLEDGE_CLASSES,
+    MATURITY_PROVISIONAL,
+    DERIVED_KINDS,
+    DerivedRefusal,
+    MalformedDerivedRecordError,
+    MissingEvidenceCitationError,
+    MaturityNotAvailableError,
+    UnknownKnowledgeRecordError,
+    Lesson,
+    Pattern,
+    AntiPattern,
+    Recipe,
+    ProjectRelationship,
+    ProjectDossier,
+    DomainKnowledgePack,
+    build_lesson,
+    build_pattern,
+    build_anti_pattern,
+    build_recipe,
+    build_project_relationship,
+    build_project_dossier,
+    build_domain_knowledge_pack,
+    knowledge_class,
+    to_dict as derived_to_dict,
+    from_dict as derived_from_dict,
 )
 from .curation import (  # noqa: F401
     ANNOTATION_KINDS,

@@ -10,11 +10,18 @@ Frozen, validated at construction: `chosen` must be one of `options` (a
 decision cannot choose what it did not consider), `constraints` and
 `consequences_expected` are frozen mappings (may be empty -- "no
 constraints were in force" is itself a legitimate recorded fact, unlike
-Episode's four parts which must be non-empty)."""
+Episode's four parts which must be non-empty).
+
+Architecture Records (LIE/01 §4.2) are NOT a separate kind: a Decision
+whose scope is architectural carries the `ARCHITECTURE_FACET` facet --
+`is_architecture_record()` is the whole convenience, no subclass."""
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .envelope import Envelope, from_dict as envelope_from_dict, to_dict as envelope_to_dict
+from .envelope import Attestation, Envelope, from_dict as envelope_from_dict, \
+    to_dict as envelope_to_dict
+
+ARCHITECTURE_FACET = "architecture"
 
 
 class DecisionRefusal(Exception):
@@ -48,9 +55,21 @@ class Decision:
     consequences_expected: MappingProxyType
 
 
+def is_architecture_record(decision):
+    """LIE/01 §4.2: an Architecture Record is a Decision with architectural
+    scope -- a facet, not a separate kind."""
+    return ARCHITECTURE_FACET in decision.envelope.facets
+
+
 def build_decision(envelope, question, options, chosen, rationale, constraints, consequences_expected):
     if not isinstance(envelope, Envelope):
         raise MalformedDecisionError("decision.envelope_not_built:" + repr(envelope))
+    if not isinstance(envelope.attestation, Attestation):
+        # Experience records are VAE-attested only (INV-1); a derivation-
+        # flavored attestation (Phase 2, derived.py) has no path into the
+        # experience layer.
+        raise MalformedDecisionError(
+            "decision.requires_vae_attestation:" + repr(type(envelope.attestation)))
     _require_nonempty_str("question", question)
     if not isinstance(options, (tuple, list)) or not options:
         raise MalformedDecisionError("decision.empty_or_bad_options:" + repr(options))
