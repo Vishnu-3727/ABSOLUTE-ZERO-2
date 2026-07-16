@@ -192,8 +192,8 @@ class PS5_ReplayTests(unittest.TestCase):
         store = _store()  # vocabulary append = position 1
         store.append_document(_document("baseline"))                      # position 2
         store.append_deprecation(("system", "baseline"), 1, _provenance())  # position 3
-        manifest = manifest_mod.build_manifest(1, store.catalog_position(),
-                                                ((("system", "baseline"), 1),))
+        manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                                ((("system", "baseline"), 1),), "h")
         store.append_manifest(manifest)                                   # position 4
         store.append_activation(manifest_mod.build_activation(None, 1))   # position 5
         self.assertEqual(store.catalog_position(), 5)
@@ -203,8 +203,8 @@ class PS5_ReplayTests(unittest.TestCase):
         store.append_document(_document("baseline", reason="v1"))
         store.append_document(_document("baseline", reason="v2"))
         store.append_deprecation(("system", "baseline"), 1, _provenance("stale"))
-        manifest = manifest_mod.build_manifest(1, store.catalog_position(),
-                                                ((("system", "baseline"), 2),))
+        manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                                ((("system", "baseline"), 2),), "h")
         store.append_manifest(manifest)
         store.append_activation(manifest_mod.build_activation(None, 1))
 
@@ -226,7 +226,7 @@ class PS5_ReplayTests(unittest.TestCase):
         store.append_document(_document("baseline"))
         log = list(store.export_log())
         corrupt = {"kind": "manifest", "payload": manifest_mod.manifest_to_dict(
-            manifest_mod.build_manifest(1, 2, ((("system", "nonexistent"), 1),)))}
+            manifest_mod.build_manifest(1, 2, 1, 1, ((("system", "nonexistent"), 1),), "h"))}
         log.append(corrupt)
         with self.assertRaises(UnknownDocumentVersionError):
             PolicyStore.rebuild_from_log(StorageDouble(), log)
@@ -275,8 +275,8 @@ class PS6_SemanticBoundaryTests(unittest.TestCase):
         store.append_deprecation(("system", "baseline"), 1, _provenance("stale"))
         # still fully readable and still usable in a manifest -- the Store
         # does not refuse to reference a deprecated version.
-        manifest = manifest_mod.build_manifest(1, store.catalog_position(),
-                                                ((("system", "baseline"), 1),))
+        manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                                ((("system", "baseline"), 1),), "h")
         store.append_manifest(manifest)  # must not raise
 
 
@@ -399,8 +399,8 @@ class PS10_NoCompiledArtifactsTests(unittest.TestCase):
     def test_manifest_only_references_document_versions_not_compiled_content(self):
         store = _store()
         store.append_document(_document("baseline"))
-        manifest = manifest_mod.build_manifest(1, store.catalog_position(),
-                                                ((("system", "baseline"), 1),))
+        manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                                ((("system", "baseline"), 1),), "h")
         store.append_manifest(manifest)
         # the manifest is (snapshot version, catalog position, doc refs) --
         # a list of ids and versions, nothing decision-shaped.
@@ -517,8 +517,8 @@ class EventTests(unittest.TestCase):
         store = PolicyStore(StorageDouble(), bus=bus)
         store.append_vocabulary(vocabulary_mod.default_v1())
         store.append_document(_document("baseline"))
-        manifest = manifest_mod.build_manifest(1, store.catalog_position(),
-                                                ((("system", "baseline"), 1),))
+        manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                                ((("system", "baseline"), 1),), "h")
         store.append_manifest(manifest)
         store.append_activation(manifest_mod.build_activation(None, 1))
         self.assertEqual(bus.messages("policy.activated"), [])  # Compiler's event, not the Store's
@@ -577,7 +577,7 @@ class SerializationRoundTripTests(unittest.TestCase):
         self.assertEqual(document_mod.canonical(doc), document_mod.canonical(restored))
 
     def test_manifest_and_activation_round_trip(self):
-        m = manifest_mod.build_manifest(1, 3, ((("system", "baseline"), 1),))
+        m = manifest_mod.build_manifest(1, 3, 1, 1, ((("system", "baseline"), 1),), "h")
         self.assertEqual(manifest_mod.manifest_from_dict(manifest_mod.manifest_to_dict(m)), m)
         a = manifest_mod.build_activation(1, 2)
         self.assertEqual(manifest_mod.activation_from_dict(manifest_mod.activation_to_dict(a)), a)

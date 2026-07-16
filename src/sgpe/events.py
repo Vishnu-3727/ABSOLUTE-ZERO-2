@@ -1,17 +1,23 @@
-"""SGPE Policy Store event canon (SGPE/05 §4, SGPE/01 §9). Publishes
-exactly the two catalog-append notifications the Store itself is
-responsible for: `policy.authored` (a document version was appended) and
-`policy.deprecated` (a deprecation marker was appended). `policy.activated`
-exists in the same overall canon (SGPE/00 §4) but is emitted by the
-Admission Compiler's activation act (Phase 2), never by the Store -- the
-Store only records the activation FACT (an append); it does not perform or
-announce activation itself.
+"""SGPE event canon (SGPE/05 §4), shared by the Policy Store (Phase 1) and
+the Admission Compiler (Phase 2). Five closed names, no others, ever:
 
-The Store consumes nothing at all (PS-7: no clock, no triggers, no
-self-initiated behavior, no causal wiring in) -- `CONSUMED` is the empty
-set and `check_consumed` always refuses, structurally."""
+- `policy.authored` / `policy.deprecated` -- Store: a document version or
+  a deprecation marker was appended (SGPE/01 §9).
+- `policy.compiled` / `policy.rejected` -- Compiler: one Compile Report was
+  produced, on success or on rejection respectively (SGPE/02 §6).
+- `policy.activated` -- Compiler's activation act: the atomic publication
+  of a new active snapshot, carrying old/new snapshot versions (SGPE/00
+  §4, SGPE/02 §7). The Store never emits this itself -- it only records
+  the activation FACT as an append; announcing activation is the
+  Compiler's act, not the Store's.
 
-PUBLISHED = ("policy.authored", "policy.deprecated")
+Every publisher shares this one module (not a separate copy per phase)
+because the event canon is one closed vocabulary for the whole engine,
+not a per-component one -- SGPE/05 §4 names all five together as "the
+event canon," and splitting it would risk two components drifting on
+what "policy.activated" means."""
+
+PUBLISHED = ("policy.authored", "policy.deprecated", "policy.compiled", "policy.rejected", "policy.activated")
 
 CONSUMED = ()
 
@@ -30,7 +36,8 @@ def _reject(event_name):
 
 def build_envelope(event_name, event_id, subject_ref, payload):
     """A published event's reference-shaped envelope. `payload` must be a
-    mapping of ids/positions/hashes -- structural facts only."""
+    mapping of ids/positions/hashes/report-shaped data -- structural facts
+    only."""
     if event_name not in PUBLISHED:
         _reject(event_name)
     if not isinstance(payload, dict):
@@ -48,7 +55,8 @@ def emit(bus, event_name, event_id, subject_ref, payload):
 
 
 def check_consumed(event_name):
-    """The Store consumes nothing -- always refuses (PS-7)."""
+    """Neither the Store nor the Compiler consumes anything -- always
+    refuses (PS-7/AC-10: no triggers, never self-initiating)."""
     _reject(event_name)
 
 
@@ -64,13 +72,10 @@ if __name__ == "__main__":
         emit(bus, name, "id:" + name, "subj", {"ref": name})
         assert bus.messages(name)[-1]["event_name"] == name
 
-    # policy.activated is NOT this module's to emit -- that's the Compiler's
-    # activation act (Phase 2), the Store only records the activation fact.
-    try:
-        emit(bus, "policy.activated", "e", "s", {})
-        raise SystemExit("policy.activated accepted by the Store's event module")
-    except UnknownEventError:
-        pass
+    # policy.activated IS in the closed set (Compiler's act) -- confirm all
+    # five names are usable, not just the Store's two.
+    assert set(PUBLISHED) == {"policy.authored", "policy.deprecated", "policy.compiled",
+                               "policy.rejected", "policy.activated"}
 
     try:
         build_envelope("policy.made_up", "e", "s", {})
@@ -78,10 +83,10 @@ if __name__ == "__main__":
     except UnknownEventError:
         pass
 
-    # the Store consumes nothing -- check_consumed must always refuse
+    # nothing is consumed -- check_consumed must always refuse
     try:
         check_consumed("policy.authored")
-        raise SystemExit("check_consumed accepted a name -- Store consumes nothing (PS-7)")
+        raise SystemExit("check_consumed accepted a name -- nothing is consumed (PS-7/AC-10)")
     except UnknownEventError:
         pass
 

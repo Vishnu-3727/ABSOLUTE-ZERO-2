@@ -47,13 +47,31 @@ proving PS-6's boundary structurally. `documents_as_of()` /
 `export_log()` / `rebuild_from_log()` make PS-5 ("entire state is a pure
 function of the append sequence") literal and testable.
 
-`events` — the closed Store event canon (`policy.authored`,
-`policy.deprecated`) — never `policy.activated` (that's the Compiler's
-activation act, Phase 2); the Store consumes nothing (PS-7).
+`events` — the closed five-name event canon shared by Store and Compiler
+(`policy.authored`, `policy.deprecated`, `policy.compiled`,
+`policy.rejected`, `policy.activated`); nothing is consumed (PS-7/AC-10).
 
 `bus_double`, `storage_double` — SGPE's own Communication/Storage test
 doubles (zero-seam rule beats DRY, mirroring every sibling component's own
-copies)."""
+copies).
+
+Phase 2: the Admission Compiler (SGPE/02) — the gate between "authored"
+and "in force." Zero runtime evaluation, zero enforcement (AC-1) — turns a
+position-stamped policy set into a validated, totally-decided, immutable
+candidate snapshot, or a rejection that changes nothing (AC-3).
+
+`compiler` — `compile_snapshot(store, position, compiler_ruleset_version,
+bus=None)`: the 8-stage pipeline (assembly, vocabulary, scope & modifier
+legality, dependency, totality, conflict detection, construction,
+readiness), pure in `(catalog position, vocabulary version, compiler
+ruleset version)` (AC-2/R1); `activate()` performs the atomic activation
+act (manifest + activation fact appends via the Phase 1 Store, snapshot
+version assigned at activation, AC-7/AC-8); `rollback()` recompiles an old
+manifest's own recorded inputs and activates forward; `regenerate()` is
+the R5 standing equivalence oracle (recompiling a manifest must reproduce
+its recorded content hash, AC-9). `Finding`/`CompileReport` carry
+`error_class` (`"corruption"` vs. `"authoring"`) and, for conflicts, a
+concrete overlap witness (AC-5)."""
 from .vocabulary import (  # noqa: F401
     INITIAL_DOMAINS,
     VocabularyRefusal,
@@ -159,4 +177,44 @@ from .store import (  # noqa: F401
     UnknownDocumentVersionError,
     DeprecationMarker,
     PolicyStore,
+)
+from .compiler import (  # noqa: F401
+    CURRENT_COMPILER_RULESET_VERSION,
+    SUPPORTED_COMPILER_RULESET_VERSIONS,
+    SCOPE_RANK,
+    EFFECT_PRIORITY,
+    ERROR as FINDING_ERROR,
+    WARNING as FINDING_WARNING,
+    CORRUPTION as ERROR_CLASS_CORRUPTION,
+    AUTHORING as ERROR_CLASS_AUTHORING,
+    VOCAB_DOMAIN_UNRESOLVED,
+    VOCAB_OPERATION_UNRESOLVED,
+    VOCAB_FACT_UNRESOLVED,
+    FINAL_ILLEGAL_SCOPE,
+    FINAL_CONTRADICTED,
+    VOCAB_VERSION_AHEAD,
+    TOTALITY_GAP,
+    UNDECIDABLE_CONFLICT,
+    SHADOWED,
+    STALE_VOCABULARY,
+    DECIDED_BY_SCOPE,
+    DECIDED_BY_DENY_OVERRIDES,
+    DECIDED_BY_MIN_LIMIT,
+    CompilerRefusal,
+    MalformedCompileInputError,
+    UnsupportedCompilerRulesetVersionError,
+    ActivationRefusedError,
+    RegenerationMismatchError,
+    Finding,
+    CompileReport,
+    IndexEntry,
+    CompiledSnapshot,
+    CompileResult,
+    compile_snapshot,
+    activate,
+    rollback,
+    regenerate,
+    finding_to_dict,
+    report_to_dict,
+    snapshot_to_dict,
 )

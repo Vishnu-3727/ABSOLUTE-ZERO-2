@@ -365,7 +365,8 @@ if __name__ == "__main__":
     assert not store.is_deprecated(("system", "baseline"), 2)
 
     # manifest + activation
-    manifest = manifest_mod.build_manifest(1, store.catalog_position(), ((("system", "baseline"), 2),))
+    manifest = manifest_mod.build_manifest(1, store.catalog_position(), 1, 1,
+                                            ((("system", "baseline"), 2),), "deadbeef")
     store.append_manifest(manifest)
     store.append_activation(manifest_mod.build_activation(None, 1))
     assert store.manifests() == (manifest,)
