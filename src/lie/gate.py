@@ -105,6 +105,23 @@ class AdmissionGate:
         self._admitted_by_attestation[attestation_ref] = entry.position
         return AdmissionResult(ADMITTED, envelope.identity, entry.position, None)
 
+    def adopt_vocabulary(self, vocabulary):
+        """Adopt a newer Curator-issued vocabulary version -- LIE/04 §6
+        Gate "normalization onto the CURRENT vocabulary" once vocabulary
+        evolution (Curator-owned, curator.py) exists. Forward-only: the
+        vocabulary is versioned and additive (LIE/01 §7), so the Gate can
+        only ever move to a strictly newer version; anything else is
+        refused loud. This is NOT the Gate "mutating the vocabulary"
+        (forbidden) -- the Curator minted the new version; the Gate merely
+        checks candidates against it from now on."""
+        if not isinstance(vocabulary, FacetVocabulary):
+            raise GateRefusal("gate.vocabulary_not_built:" + repr(vocabulary))
+        if vocabulary.version <= self._vocabulary.version:
+            raise GateRefusal("gate.vocabulary_version_not_advancing:current=" +
+                               str(self._vocabulary.version) + ":proposed=" +
+                               str(vocabulary.version))
+        self._vocabulary = vocabulary
+
     def _reject(self, envelope, attestation_ref, reason):
         self._telemetry.record("admission_rejected", {
             "identity": envelope.identity, "attestation_ref": attestation_ref, "reason": reason,

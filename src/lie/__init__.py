@@ -110,7 +110,35 @@ Obligation seam (byte-identical layer comparison, LIE/02 §9).
 `derived` (extended) — the real LIE/02 §4 Maturity ladder
 (`MATURITY_GRADES`, closed three, computed at derivation) replacing the
 Phase 2 pinned placeholder, plus the `contested` flag on
-Pattern/AntiPattern."""
+Pattern/AntiPattern.
+
+Phase 4: operational lifecycle (LIE/03).
+
+`advisory` — `AdvisoryInterface`: atomic layer publication (OPS-3) with
+`lesson.recorded` change notifications (never carrying advice, LIE/03
+§7); pull-only `consult()` returning four-part `Recommendation` objects
+or the definite `NoRelevantExperience`, every response stamped with its
+Derivation State (OPS-4).
+
+`runtime` — `LieRuntime`: the causal-trigger orchestrator (OPS-7, no
+clocks) — `on_ledger_appended`, `on_curation_ruling`,
+`on_ruleset_changed` (OPS-6: effect only via full regeneration),
+`regenerate` (explicit request / recovery); every trigger is full
+regeneration + atomic publication (OPS-8 by construction).
+
+Phase 5: the Curator (LIE/00 §4.5, LIE/04 §6) — implementation complete.
+
+`curator` — `Curator`: deliberate governance only — `rule()` appends
+citable, versioned rulings to the overlay (implements CuratorPort);
+vocabulary ownership via additive `evolve_vocabulary()`; monotonic
+ruleset version governance via `adopt_ruleset()` with every historical
+version retained; `contested_queue()` reads the Distillery-flagged
+conflicts from a published layer for deliberate ruling. No admission, no
+compilation, no mutation surface anywhere.
+
+`gate` (extended) — `adopt_vocabulary()`: forward-only adoption of a
+Curator-issued newer vocabulary version, keeping admission normalized
+onto the CURRENT vocabulary."""
 from .vocabulary import (  # noqa: F401
     VocabularyRefusal,
     MalformedVocabularyError,
@@ -274,4 +302,23 @@ from .distillery import (  # noqa: F401
     layer_to_dict,
     layer_canonical,
     citation_chain,
+)
+from .advisory import (  # noqa: F401
+    AdvisoryRefusal,
+    NoLayerPublishedError,
+    MalformedConsultationError,
+    Recommendation,
+    NoRelevantExperience,
+    AdvisoryInterface,
+)
+from .runtime import (  # noqa: F401
+    RuntimeRefusal,
+    MalformedRuntimeInputError,
+    LieRuntime,
+)
+from .curator import (  # noqa: F401
+    CuratorRefusal,
+    MalformedCuratorInputError,
+    RulesetVersionNotAdvancingError,
+    Curator,
 )
