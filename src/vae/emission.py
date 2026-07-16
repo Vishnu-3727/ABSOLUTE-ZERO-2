@@ -105,6 +105,35 @@ def _failure_reasons(record, account):
     return tuple(reasons)
 
 
+def build_verdict_envelope(record_hash, account_record):
+    """Pure: the verdict event name/id/payload VAE/03 §2.1 fixes, built
+    from an account-bearing record's own content hash and derivation
+    account alone -- no Storage write, no bus publish. Factored out of
+    emit_verdict() (Phase 5, VAE/05 §8: "every verdict event re-derives
+    from its persisted evidence record") so replay can reconstruct the
+    EXACT envelope emit_verdict() would have published for the same
+    record, without repeating a live persist -- replay only ever reads
+    (VAE-O10)."""
+    account = account_record.derivation_account
+    verdict = account["verdict"]
+    evidence_record_ref = "storage:vae/ev/" + record_hash
+    passed = verdict == derivation.VERDICT_PASSED
+    event_name = "verify.passed" if passed else "verify.failed"
+    event_id = record_hash + (":passed" if passed else ":failed")
+
+    payload = {
+        "verdict_id": record_hash,
+        "artifact_id": account_record.artifact_ref,
+        "rules_version": account_record.rules_version,
+        "evidence_record_ref": evidence_record_ref,
+        "assurance_level": account["assurance_level"],
+    }
+    if not passed:
+        payload["failure_cause"] = account["failure_cause"]
+        payload["reasons"] = _failure_reasons(account_record, account)
+    return event_name, event_id, payload
+
+
 def emit_verdict(judgment, policy, storage, bus, intake):
     """The whole Phase 4 choreography for one closed judgment: derive ->
     persist via Storage -> publish exactly one verdict (or, on rejection,
@@ -139,23 +168,9 @@ def emit_verdict(judgment, policy, storage, bus, intake):
         raise EmissionRefusal("emission.unknown_storage_outcome:" + repr(outcome))
 
     # (4) Publish -- only reached after durable confirmation.
-    account = account_record.derivation_account
-    verdict = account["verdict"]
-    evidence_record_ref = "storage:" + storage_key
-    passed = verdict == derivation.VERDICT_PASSED
-    event_name = "verify.passed" if passed else "verify.failed"
-    event_id = record_hash + (":passed" if passed else ":failed")
-
-    payload = {
-        "verdict_id": record_hash,
-        "artifact_id": judgment.artifact_ref,
-        "rules_version": judgment.rules_version,
-        "evidence_record_ref": evidence_record_ref,
-        "assurance_level": account["assurance_level"],
-    }
-    if not passed:
-        payload["failure_cause"] = account["failure_cause"]
-        payload["reasons"] = _failure_reasons(account_record, account)
+    event_name, event_id, payload = build_verdict_envelope(record_hash, account_record)
+    evidence_record_ref = payload["evidence_record_ref"]
+    verdict = account_record.derivation_account["verdict"]
 
     env = events.emit(bus, event_name, event_id, judgment.artifact_ref, payload)
     intake.mark_terminal(judgment.artifact_ref, evidence_record_ref)
@@ -209,6 +224,15 @@ if __name__ == "__main__":
         assert field in payload
     assert "failure_cause" not in payload and "reasons" not in payload
     assert intake.terminal_verdict("artifact:a1") == result.evidence_record_ref
+
+    # -- build_verdict_envelope reproduces the same envelope emit_verdict published --
+    account_record_reloaded = derivation.attach_derivation(j_pass.record, policy)
+    reloaded_hash = evidence.content_hash(account_record_reloaded)
+    reloaded_name, reloaded_id, reloaded_payload = build_verdict_envelope(
+        reloaded_hash, account_record_reloaded)
+    assert reloaded_name == "verify.passed"
+    assert reloaded_id == result.event["event_id"]
+    assert reloaded_payload == result.event["payload"]
 
     # -- fail path: verify.failed carries failure_cause + reasons (VAE-K8) --
     storage2, bus2, intake2 = StorageDouble(), BusDouble(), Intake()
