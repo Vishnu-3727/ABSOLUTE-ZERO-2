@@ -29,6 +29,15 @@ from execution import Engine
 from kernel import envelope
 from kernel.coordinator import Coordinator
 from kernel.default_config import snapshot
+from sgpe import compiler as sgpe_compiler
+from sgpe import condition as sgpe_condition
+from sgpe import document as sgpe_document
+from sgpe import rule as sgpe_rule
+from sgpe import vocabulary as sgpe_vocabulary
+from sgpe.evaluator import build_question
+from sgpe.ledger import GrantLedger
+from sgpe.runtime import GovernanceRuntime
+from sgpe.store import PolicyStore
 from storage import Store
 from ws import ACTIVE, WorkflowRun, compile_workflow
 
@@ -51,6 +60,79 @@ def default_binder(unit):
     return {"command": [PY, "-c", code], "timeout_seconds": 30}
 
 
+# -- SGPE bootstrap canon (SGPE/05 §3): vocabulary v1 + system defaults →
+#    first compile → first activation. The constitution below is the
+#    system-default deny-by-default document the canon requires — policy
+#    CONTENT authored here at the composition root, no policy LOGIC.
+
+SGPE_OPERATIONS = (
+    "execution.run", "token-budget.run",
+    "persistence.store", "resource-limit.store",
+    "plugin.bind",
+    "model.invoke", "token-budget.invoke",
+    "resource-limit.dispatch", "retry-limit.dispatch",
+    "context-limit.assemble",
+    "resource-limit.verify", "approval.waive",
+)
+
+
+def _sgpe_rule(rule_id, domain, operation, selector, effect, value=None,
+               condition=None, final=False):
+    return sgpe_rule.build_rule(
+        rule_id, sgpe_rule.build_target(domain, operation, selector),
+        sgpe_rule.build_effect(effect, value),
+        condition=condition, final=final)
+
+
+def default_constitution():
+    """System-default constitution: execution and persistence allowed
+    under budget ceilings, plugin binding needs approval, waivers denied
+    outright. Every declared operation answered (totality)."""
+    over_budget = sgpe_condition.build_comparison("usage.tokens", "gte", 1000)
+    return (
+        _sgpe_rule("r-exec", "execution", "run", "*", "ALLOW"),
+        _sgpe_rule("r-exec-budget", "token-budget", "run", "*", "LIMIT", 5000),
+        _sgpe_rule("r-persist", "persistence", "store", "*", "ALLOW"),
+        _sgpe_rule("r-retention", "resource-limit", "store", "*", "LIMIT", 30),
+        _sgpe_rule("r-plugin", "plugin", "bind", "*", "REQUIRE_APPROVAL"),
+        _sgpe_rule("r-model", "model", "invoke", "*", "ALLOW"),
+        _sgpe_rule("r-model-cap", "model", "invoke", "*", "DENY",
+                   condition=over_budget),
+        _sgpe_rule("r-model-budget", "token-budget", "invoke", "*", "LIMIT", 1000),
+        _sgpe_rule("r-concurrency", "resource-limit", "dispatch", "*", "LIMIT", 4),
+        _sgpe_rule("r-retries", "retry-limit", "dispatch", "*", "LIMIT", 3),
+        _sgpe_rule("r-context", "context-limit", "assemble", "*", "LIMIT", 8000),
+        _sgpe_rule("r-verify-budget", "resource-limit", "verify", "*", "LIMIT", 2),
+        _sgpe_rule("r-no-waiver", "approval", "waive", "*", "DENY", final=True),
+    )
+
+
+def boot_governance(storage, bus):
+    """Build SGPE over real Storage. First boot runs the bootstrap canon;
+    a rebooted vault already carries its authored world and is NOT
+    re-authored (the catalog is append-only law, not a config file)."""
+    store = PolicyStore(storage, bus=bus)
+    if store.catalog_position() == 0:
+        v1 = sgpe_vocabulary.default_v1()
+        store.append_vocabulary(v1)
+        store.append_vocabulary(sgpe_vocabulary.evolve(
+            v1, operations=SGPE_OPERATIONS, fact_names=("usage.tokens",)))
+        provenance = sgpe_document.build_provenance(
+            "system", "epoch-0", "constitution")
+        header = sgpe_document.build_header(
+            "system", "constitution", ("execution",), provenance, 2, 1)
+        store.append_document(
+            sgpe_document.build_document(header, default_constitution()))
+        result = sgpe_compiler.compile_snapshot(
+            store, store.catalog_position(), bus=bus)
+        if result.outcome != "compiled":
+            raise RuntimeError("sgpe bootstrap failed: %r"
+                               % (result.report.errors,))
+        sgpe_compiler.activate(store, result, bus=bus)
+    ledger = GrantLedger(storage, bus=bus)
+    return GovernanceRuntime(store, ledger, bus=bus)
+
+
 class System:
     """One booted operating system. Single-threaded by kernel law; callers
     that need concurrency serialize outside (the gateway holds one lock)."""
@@ -62,6 +144,8 @@ class System:
         self.kernel = Coordinator(self.bus, snapshot())
         self.engine = Engine(storage=self.store.namespace("execution"),
                              bus=self.bus)
+        self.governance = boot_governance(self.store.namespace("sgpe"),
+                                          self.bus)
         self.binder = binder or default_binder
         self.requests = {}  # rid -> record of real object refs
 
@@ -78,7 +162,7 @@ class System:
 
     # -- the pipeline (ARCHITECTURE 'Request lifecycle', wired parts) --------
 
-    def submit(self, intent, goals):
+    def submit(self, intent, goals, principal="workbench", project="default"):
         rid = "REQ-%04d" % (len(self.requests) + 1)
         record = {"request_id": rid, "intent": intent, "goals": list(goals),
                   "provenance": {
@@ -86,6 +170,23 @@ class System:
                       "verification": "auto-pass — VAE not wired",
                       "binding": "stand-in commands — PRT binding pending"}}
         self.requests[rid] = record
+
+        # 0. Governance admission (SGPE/04 §2.2): bind the frozen Effective
+        #    Policy, then ask the one question that gates the pipeline —
+        #    may this principal run work at all? DENY refuses the request
+        #    before the kernel ever sees it; the decision is recorded
+        #    either way (stamped, replayable forever).
+        view = self.governance.admit(rid, principal, project)
+        record["governance"] = {"ep_stamp": view.stamp()}
+        decision = view.consult(build_question(
+            "kernel", rid, principal, "execution", "run", "workflow", {}))
+        record["governance"]["admission"] = {
+            "effect": getattr(decision, "effect_kind", "ILL_POSED"),
+            "question_hash": getattr(decision, "question_hash", None)}
+        if getattr(decision, "effect_kind", "DENY") != "ALLOW":
+            record["refused"] = "governance: %s" % \
+                record["governance"]["admission"]["effect"]
+            return record
 
         # 1. Kernel admission + routing (real ledger, real gates)
         self.kernel.handle(self._env(rid + ":e1", "request.received", rid,

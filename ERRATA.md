@@ -499,3 +499,33 @@ behavior; RSM/01-04's `classify.completed` mentions are covered by this
 erratum, frozen docs untouched). `classify.completed` is a banned stale
 name from here on. The same sweep fixed the two remaining `lesson.learned`
 diagram references (C1 enforcement, missed in the C1-era sweep).
+
+
+## C17 — SGPE's nine-event canon is registered in the executable vocabulary as RECORD topics; the matrix gains Governance rows
+
+**Implementation ruling C3 (System Integration): 2026-07-18.** The first
+real boot of SGPE over the real Bus was refused with
+`schema.unknown_topic:'policy.authored'` — correct fail-closed behavior:
+SGPE's event canon (SGPE/05 §4, closed set of nine) predates the
+executable vocabulary and was never registered, and the ARCHITECTURE
+matrix carried no Governance rows at all. Ruling:
+
+1. **The nine SGPE names join the vocabulary as RECORD topics** —
+   `policy.authored/.deprecated/.compiled/.rejected/.activated/.decided/
+   .illposed`, `grant.recorded`, `grant.revoked`. RECORD, not ENVELOPE:
+   SGPE's envelopes are its own reference shape (`event_name, event_id,
+   subject_ref, payload`) with no `request_id` — policy authorship and
+   grants are not request-scoped, and the shape belongs to the
+   publisher's closed canon (SGPE/05 §4), which Communication does not
+   restate.
+2. **The matrix gains one row per name**, publisher Governance
+   (per-subsystem attribution as SGPE/05 §4 assigns it), consumer
+   Observability — matching EV-10/GL-7: the bus event IS the audit
+   trail; no runtime consumer reacts to policy events.
+3. **Registration stays an explicit act.** Nothing auto-registers on
+   first publish; the next component that brings its own canon (VAE's
+   verdict shape) goes through the same door.
+
+Discovered by C3's System composition root — the first code anywhere
+that boots SGPE against the real Communication component instead of its
+`bus_double`.

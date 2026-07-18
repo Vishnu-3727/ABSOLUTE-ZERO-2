@@ -382,6 +382,15 @@ is the shared vocabulary referenced by all component specs.
 | `reasoning.completed` | Reasoning Orchestrator | Verification, Scheduling, Observability |
 | `reasoning.failed` | Reasoning Orchestrator | Scheduling, Learning, Observability |
 | `prior.updated` | Learning | Capability Planning, Reasoning Orchestrator, Observability |
+| `policy.authored` | Governance (Policy Store) | Observability |
+| `policy.deprecated` | Governance (Policy Store) | Observability |
+| `policy.compiled` | Governance (Compiler) | Observability |
+| `policy.rejected` | Governance (Compiler) | Observability |
+| `policy.activated` | Governance (Compiler) | Observability |
+| `policy.decided` | Governance (Evaluator) | Observability |
+| `policy.illposed` | Governance (Evaluator) | Observability |
+| `grant.recorded` | Governance (Grant Ledger) | Observability |
+| `grant.revoked` | Governance (Grant Ledger) | Observability |
 
 ---
 

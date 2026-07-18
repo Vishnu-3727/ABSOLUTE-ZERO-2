@@ -53,7 +53,18 @@ _MATRIX_TOPICS = (
     "delivery.failed",
 )
 
-_RECORD_TOPICS = ("transition.log",)
+_RECORD_TOPICS = ("transition.log",) + (
+    # SGPE event canon (SGPE/05 §4, registered by ERRATA C17): nine closed
+    # names carrying SGPE's own reference-shaped envelopes (event_name,
+    # event_id, subject_ref, payload — no request_id: policy authorship
+    # and grants are not request-scoped). RECORD kind: the shape belongs
+    # to the publisher's closed canon; registering here is the explicit
+    # act the vocabulary requires. C3 integration caught these unregistered
+    # the first time the real Bus carried a policy bootstrap.
+    "policy.authored", "policy.deprecated", "policy.compiled",
+    "policy.rejected", "policy.activated", "policy.decided",
+    "policy.illposed", "grant.recorded", "grant.revoked",
+)
 
 
 class SchemaViolation(Exception):

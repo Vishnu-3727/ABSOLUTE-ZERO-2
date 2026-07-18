@@ -44,6 +44,22 @@ class SystemPhase1(unittest.TestCase):
                 self.assertIn("VAE", record["provenance"]["verification"])
                 self.assertIn("PRT", record["provenance"]["binding"])
 
+                # governance really consulted: EP bound at admission, the
+                # ALLOW decision stamped and replayable
+                gov = record["governance"]
+                self.assertEqual(gov["admission"]["effect"], "ALLOW")
+                self.assertTrue(gov["ep_stamp"])
+                self.assertTrue(gov["admission"]["question_hash"])
+
+                # a denied operation refuses BEFORE the kernel sees it:
+                # the constitution's final DENY on approval.waive
+                from sgpe.evaluator import build_question
+                view = system.governance.view_for(gov["ep_stamp"])
+                denied = view.consult(build_question(
+                    "kernel", rid, "workbench", "approval", "waive",
+                    "workflow", {}))
+                self.assertEqual(denied.effect_kind, "DENY")
+
                 # bus: events landed on the replay log (durable, sequenced)
                 self.assertTrue(system.bus.replay("request.completed"))
 

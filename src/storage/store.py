@@ -126,12 +126,18 @@ class Store:
             self._emit("storage.rejected", key, repr(exc))
             raise WriteFailedError("storage.write_failed:%s:%r" % (key, exc))
         self._emit("storage.committed", key, "")
+        # Outcome string is the PORT CONTRACT every component was built
+        # against (their test doubles return "committed"/"rejected", and
+        # SGPE/LIE/VAE fail closed on any other value — C3 integration
+        # caught the real substrate returning None here). Failure still
+        # raises: loud beats a string the caller might ignore.
+        return "committed"
 
     def write_once(self, key, data):
         """Append-only discipline: an existing key is refused, never replaced."""
         if self.exists(key):
             raise KeyExistsError("storage.key_exists:" + key)
-        self.write(key, data)
+        return self.write(key, data)
 
     def read(self, key):
         """Verified read: sha256 checked before a single byte is returned."""
@@ -208,10 +214,10 @@ class NamespaceHandle:
         return key
 
     def write(self, key, data):
-        self._store.write(self._guard(key), data)
+        return self._store.write(self._guard(key), data)
 
     def write_once(self, key, data):
-        self._store.write_once(self._guard(key), data)
+        return self._store.write_once(self._guard(key), data)
 
     def read(self, key):
         return self._store.read(self._guard(key))
