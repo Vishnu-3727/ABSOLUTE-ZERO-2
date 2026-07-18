@@ -36,7 +36,7 @@ TERMINAL_FAMILIES = frozenset({
 LATE_TOLERANT_FAMILIES = frozenset({"cost.recorded"})  # RSM/03 §3 decision
 
 CONTRIBUTING_FAMILIES = frozenset({
-    "classify.completed", "plan.created", "plan.revised", "plan.validated",
+    "intent.classified", "plan.created", "plan.revised", "plan.validated",
     "plan.rejected", "task.scheduled", "task.started", "task.preempted",
     "task.completed", "task.failed", "exec.started", "exec.completed",
     "exec.timeout", "exec.failed", "context.assembled", "verify.requested",

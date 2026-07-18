@@ -121,7 +121,7 @@ flowchart LR
     CP -->|request context| CTX
     CP -->|match capabilities| PLG
     CTX -->|query repo knowledge| MEM
-    CTX -->|read other memories| STO
+    CTX -->|consult lessons/priors via advisory| LRN
     VER -->|run checks / selftests| EXE
     EXE -->|load tool/plugin| PLG
     LRN -->|read closed traces| OBS
@@ -186,7 +186,7 @@ sequenceDiagram
 
     SCH->>CP: plan(intent, budget)
     CP->>CP: classify intent (pluggable, confidence)
-    CP-->>OBS: classify.completed
+    CP-->>OBS: intent.classified
     CP->>PLG: match capabilities for steps
     PLG-->>CP: candidate tools/skills + reliability
     CP-->>OBS: plan.created
@@ -227,14 +227,16 @@ sequenceDiagram
     OBS->>LRN: closed trace available
     LRN->>MEM: update priors / index
     LRN->>STO: write lessons & faults
-    LRN-->>OBS: lesson.learned
+    LRN-->>OBS: lesson.recorded
 ```
 
 **Guarantees**
 
 - **Unskippable gates (Law 4, fix H3):** the only edge from a step to
   `task.completed`/commit passes through `verify.passed`. Scheduling has no path
-  that bypasses it.
+  that bypasses it. Gates are layered by object (ERRATA C5): Scheduling gates
+  *task dispatch*, the Kernel gates *request lifecycle transitions* — a permit
+  requires both, so disagreement degrades to refusal, never bypass.
 - **Containment (fix H4):** `exec.timeout`/`exec.failed` are ordinary results
   Execution returns; they never crash Verification or the Scheduler.
 - **Determinism (Law 6):** classification, capability matching, and context
@@ -332,11 +334,12 @@ is the shared vocabulary referenced by all component specs.
 | `request.rejected` | Kernel | Frontend, Observability |
 | `request.completed` | Kernel | Frontend, Learning, Observability |
 | `request.failed` | Kernel | Frontend, Learning, Observability |
-| `classify.completed` | Capability Planning | Scheduling, Observability |
+| `intent.classified` | Capability Planning (ERRATA C16) | Scheduling, Observability |
 | `plan.created` | Capability Planning | Verification, Scheduling, Observability |
 | `plan.validated` | Verification | Scheduling, Observability |
 | `plan.rejected` | Verification | Capability Planning, Observability |
 | `plan.revised` | Capability Planning | Scheduling, Observability |
+| `workflow.created` | Scheduling | Verification, Observability (ERRATA C15) |
 | `task.scheduled` | Scheduling | Execution, Observability |
 | `task.started` | Scheduling | Observability |
 | `task.preempted` | Scheduling | Execution, Observability |
@@ -364,7 +367,7 @@ is the shared vocabulary referenced by all component specs.
 | `plugin.health.changed` | Plugin Runtime | Scheduling, Capability Planning, Observability |
 | `plugin.lifecycle.changed` | Lifecycle | Plugin Runtime, Observability |
 | `reliability.updated` | Learning | Plugin Runtime, Capability Planning, Observability |
-| `lesson.learned` | Learning | Capability Planning, Observability |
+| `lesson.recorded` | Learning | Capability Planning, Observability |
 | `fault.recorded` | Any (via Communication) | Observability, Learning |
 | `storage.committed` | Storage | Observability |
 | `storage.rejected` | Storage | Observability, requesting component |
@@ -391,8 +394,10 @@ Storage on the owner's behalf. No two rows share a state.
 | State | Sole owner | Physically written by |
 |-------|-----------|-----------------------|
 | Admission & routing authority; request identity | Kernel | (in-memory / via Storage) |
-| Request / repo / plugin / session state machines | Lifecycle | Storage |
-| Work order, priorities, budgets, preemption state | Scheduling | (in-memory) |
+| Request lifecycle state (live; sole mutator: Coordinator) | Kernel | (in-memory; transition log is the durable record) |
+| Request legal-transition table (authored definition, delivered as config) | Lifecycle | Storage |
+| Repo / plugin / session state machines | Lifecycle | Storage |
+| Work order, priorities, budget *allocations* + reservations (limits authored by SGPE; spend metered by Observability — ERRATA C6), preemption state | Scheduling | (in-memory) |
 | Repository index, symbols, structure, conventions, history | Repository Memory | Storage |
 | Plans, classification results, capability matches | Capability Planning | Storage |
 | Plugin registry, versions, isolation, health scores | Plugin Runtime | Storage |
@@ -400,7 +405,7 @@ Storage on the owner's behalf. No two rows share a state.
 | Verification verdicts | Verification | Storage |
 | Process sandbox / timeout / retry state | Execution | (in-memory) |
 | Lessons, faults, planning priors, plugin reliability | Learning | Storage |
-| Config source of truth, vault layout, git integration, locks | Storage | Storage |
+| Config custody (authored instance bytes — schema per component, activation via `config.changed`, ERRATA C10), vault layout, git integration, locks | Storage | Storage |
 | Telemetry, metrics, token/cost accounting, audit log, episodic traces | Observability | Storage |
 | Event schema, topic/subscription registry | Communication | Storage |
 | Presented (read-only) view state | Frontend | never (reads only) |
@@ -414,7 +419,35 @@ Storage on the owner's behalf. No two rows share a state.
 - **Context assembly** exists in exactly one place: Context Management — it
   builds Request Memory and nothing else builds it.
 - **Request preparation & rendering** (formerly "prompt compilation") exist in exactly one place: the Reasoning Orchestrator (supersedes the planned Prompt Compiler Execution Service — RO/00 §5.7); it consumes Request Memory, never builds it.
-- **Config** has one source of truth: Storage (kills M4 duplication).
+- **Conformance is layered** (ERRATA C12): each component statically
+  verifies its own local invariants (its `law_enforcer`); global invariants
+  have one authority — the repo conformance layer in `tests/`, run in CI,
+  fail closed. Two global checks are provisionally hosted in `ums`/`cm`
+  modules as repo-conformance content (C4 custody precedent). Runtime
+  governance of requests remains SGPE's and is a different concept entirely.
+- **Plugin quality is two concepts with one seam** (ERRATA C9): PRT owns live
+  operational health (deterministic evidence fold); Learning owns learned
+  reliability (`reliability.updated`); PRT owns the composition — the priors
+  fold in as one versioned declared input, and neither side ever writes the
+  other's state.
+- **Experience is layered, one owner per concept** (ERRATA C8): components
+  *observe* and ship reference-shaped outcome streams; only Learning (LIE)
+  distills, curates, and authors lessons/priors; consumers hold versioned,
+  replay-pinned representations (RO's PriorsStore is the reference case) and
+  never compute their own.
+- **Budget authority is layered, one owner per concept** (ERRATA C6): SGPE
+  authors limits, Scheduling allocates, Observability meters spend, CM/UMS/RO
+  fit under handed ceilings without mutating them, and "remaining" is always
+  derived at the point of comparison — never stored as anyone's state.
+- **Request lifecycle truth** exists in exactly one place: the Kernel Ledger.
+  RSM is its derived, rebuildable read surface — never consulted for control
+  decisions — and Lifecycle authors the transition table without ever
+  advancing request state (ERRATA C4).
+- **Config** decomposes with one owner per concept (ERRATA C10): each
+  component owns its schema (disjoint key namespaces), Storage holds custody
+  of the authored instance (kills M4 duplication), activation is a governed
+  versioned event, and the effective view is derived, immutable, and
+  request-pinned for replay.
 - **Telemetry** has one schema and one sink: Observability (kills M8 scatter).
 
 ---
@@ -494,8 +527,8 @@ Memory is the sole retriever, budget is a hard ceiling.
 flowchart LR
     step[Step + token budget] --> CTX[Context Management]
     CTX -->|query| MEM[(Repository Memory)]
-    CTX -->|read lessons/priors| SEM[(Semantic memory · via Storage)]
-    CTX -->|read prior decisions| EPI[(Episodic · via Storage)]
+    CTX -->|consult| SEM[(Semantic memory · via Learning's advisory interface, ERRATA C2/C7)]
+    CTX -->|read by declared id| EPI[(Episodic · via Observability's query API, ERRATA C7)]
     MEM -->|ranked results ≤25-token summaries| CTX
     CTX -->|rank · dedup · fit budget · fidelity tiers| RQM[Request Memory]
     RQM --> RO2[Reasoning Orchestrator · necessity gate + request prep] --> LLM[[reasoning engine · model-agnostic, governed invocation]]
@@ -514,7 +547,7 @@ flowchart LR
     L2 --> MEM
     L3 --> PLG[Plugin Runtime reliability]
     LRN -->|write| STO[(Storage)]
-    LRN -.reliability.updated / lesson.learned.-> BUS{{Communication}}
+    LRN -.reliability.updated / lesson.recorded.-> BUS{{Communication}}
     BUS --> CP[Capability Planning priors]
 ```
 
@@ -535,19 +568,19 @@ flowchart LR
 
 | Component | One-line responsibility | Spec |
 |-----------|-------------------------|------|
-| Kernel | System authority (black box): admits/routes requests, mediates lifecycle gates. | [kernel.md](COMPONENTS/kernel.md) |
+| Kernel | System authority (black box): admits/routes requests; gate authority — owns gate definitions, enforces lifecycle-transition gates, sole emitter of `gate.enforced` (ERRATA C5). | [kernel.md](COMPONENTS/kernel.md) |
 | Repository Memory | Single retrieval/similarity/index authority; all repo knowledge. | [memory.md](COMPONENTS/memory.md) |
-| Scheduling | Orders and admits work; priorities, budgets, preemption, backpressure; enforces gates. | [scheduling.md](COMPONENTS/scheduling.md) |
+| Scheduling | Orders and admits work; priorities, budgets, preemption, backpressure; enforces the *dispatch* gate (holds ungated work — the Kernel is the gate authority, ERRATA C5). | [scheduling.md](COMPONENTS/scheduling.md) |
 | Execution | Sole process spawner; sandbox, timeouts, retries, caps, failure containment. | [execution.md](COMPONENTS/execution.md) |
 | Capability Planning | Intent → validated plans; classification, decomposition, capability matching, confidence. | [capability-planning.md](COMPONENTS/capability-planning.md) |
 | Plugin Runtime | Discovers/loads/isolates/versions plugins; capability registry; self-healing reliability. | [plugin-runtime.md](COMPONENTS/plugin-runtime.md) |
 | Context Management | Sole assembler of Request Memory; ranking, dedup, budget, freshness. Prompt compilation superseded: request preparation/rendering lives in the Reasoning Orchestrator (RO/00 §5.7). | [context-management.md](COMPONENTS/context-management.md) |
 | Verification | Mechanical gates on plans/diffs/artifacts/selftests; verdicts as enforced events. | [verification.md](COMPONENTS/verification.md) |
 | Learning | Harvests closed traces into lessons/faults/priors; updates reliability. | [learning.md](COMPONENTS/learning.md) |
-| Storage | Sole durable-write authority; atomic/locked/transactional; config source of truth. | [storage.md](COMPONENTS/storage.md) |
+| Storage | Sole durable-write authority; atomic/locked/transactional; config custody (never config authority — ERRATA C10). | [storage.md](COMPONENTS/storage.md) |
 | Frontend | User surfaces (CLI, dashboard); presents state, never owns it. | [frontend.md](COMPONENTS/frontend.md) |
 | Communication | Event bus + message schema; pub/sub contracts; delivery guarantees. | [communication.md](COMPONENTS/communication.md) |
-| Lifecycle | State machines for long-lived things; owns transition legality. | [lifecycle.md](COMPONENTS/lifecycle.md) |
+| Lifecycle | State machines for long-lived things; owns transition legality. Requests: defines the table only — the Kernel advances request state (ERRATA C4). | [lifecycle.md](COMPONENTS/lifecycle.md) |
 | Observability | Unified telemetry: traces, metrics, token/cost accounting, audit log; one schema, one sink. | [observability.md](COMPONENTS/observability.md) |
-| Request State Manager | Single source of truth for runtime request state; event-sourced materialized view, journal, replay. | [RSM/](RSM/01-problem-definition.md) |
+| Request State Manager | Sole system-wide *derived* read surface for runtime request state; event-sourced materialized view, journal, replay. Never a control-decision input; Kernel Ledger wins on divergence (ERRATA C4). | [RSM/](RSM/01-problem-definition.md) |
 | Reasoning Orchestrator | Governs reasoning as a scarce resource: necessity gate, provider-independent request preparation, governed invocation; never reasons. | [RO/](RO/00-architectural-foundation.md) |

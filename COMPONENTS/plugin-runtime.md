@@ -32,7 +32,7 @@ gracefully instead of silently corrupting decisions.
 - Plugin discovery sources (declared manifests, install locations).
 - `plugin.lifecycle.changed` (from Lifecycle) — authoritative plugin state transitions.
 - `reliability.updated` (from Learning) — outcome-derived reliability signal.
-- Process outcome events used to inform health (`process.failed`, `process.timeout`).
+- Process outcome events used to inform health (`exec.failed`, `exec.timeout`).
 
 ## Outputs
 - The capability registry (via direct query API + change events).
@@ -47,7 +47,7 @@ gracefully instead of silently corrupting decisions.
 ## Events Consumed
 - `plugin.lifecycle.changed` (Lifecycle)
 - `reliability.updated` (Learning)
-- `process.failed`, `process.timeout` (Execution) — evidence for health.
+- `exec.failed`, `exec.timeout` (Execution) — evidence for health.
 
 ## Dependencies
 - **Lifecycle** — owns plugin state machine; Plugin Runtime enacts registry/load effects of transitions.
@@ -57,7 +57,7 @@ gracefully instead of silently corrupting decisions.
 - **Communication / Observability** — transport and universal telemetry consumer.
 
 ## Failure Modes
-- **Malicious/broken plugin** → isolation contains it; repeated `process.failed`/`process.timeout`
+- **Malicious/broken plugin** → isolation contains it; repeated `exec.failed`/`exec.timeout`
   drop its reliability and trigger quarantine (`plugin.unloaded` + `plugin.health.changed`).
 - **Version conflict** → incompatible plugin refused at load; never silently shadow another capability.
 - **Registry drift** → registry is the single source; Capability Planning reads it live, so no
@@ -97,7 +97,7 @@ This spec predates PRT/00-05 (`PRT/00-architectural-foundation.md` through
   Published list (see above) — it was matrix-side drift only, and is now dead vocabulary; the fact
   it named (barred from eligibility) is exactly what `plugin.health.changed` already announces
   (PRT/05 §4).
-- **(b) Events Consumed** — `process.failed`/`process.timeout` above are stale draft vocabulary;
+- **(b) Events Consumed** — `exec.failed`/`exec.timeout` above are stale draft vocabulary;
   the canonical, Execution-published names are `exec.failed`/`exec.timeout` (PRT/00 §7 D2, PRT/05
   §4). PRT consumes `exec.*` as health evidence, nothing else.
 - **(c) Registry contents** — the capability registry additionally carries CP/01's full capability

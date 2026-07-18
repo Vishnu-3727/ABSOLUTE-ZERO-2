@@ -39,10 +39,10 @@ work memory and knowledge memory separate.
 - Persisted index files, artifacts, and git commits.
 
 ## Events Published
-- `write.committed` — a durable write completed atomically.
-- `write.failed` — a durable write failed (lock/transaction/IO); no partial state left behind.
-- `config.changed` — the config source of truth changed.
-- `commit.created` — a git commit landed in history.
+- `storage.committed` — a durable write completed atomically (ERRATA C13 canonical name).
+- `storage.rejected` — a durable write failed (lock/transaction/IO); no partial state left behind (ERRATA C13 canonical name).
+- `config.changed` — the config custody content changed (custody, not authority — ERRATA C10).
+- `commit.created` — a git commit landed in history (git integration phase — deferred until Execution exists, ERRATA C13).
 
 ## Events Consumed
 - `repository.onboarded`, `repository.offboarded` (Lifecycle)

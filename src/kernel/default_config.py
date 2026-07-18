@@ -3,6 +3,11 @@ definitions as pure data. Policy content lives here, never in coordinator
 logic (I13). Requests are opaque typed work; the routing table entries below
 are placeholders that deployments replace via config.changed.
 
+Custody note (ERRATA C4): the request transition table below is
+Lifecycle-owned *content* provisionally hosted in the Kernel's tree until
+Lifecycle is implemented. Changing TRANSITIONS is a Lifecycle-policy change,
+not a Kernel change; the Kernel only evaluates it.
+
 Row schema:
   when     guard name evaluated by the coordinator (None = unconditional)
   next     state after the transition

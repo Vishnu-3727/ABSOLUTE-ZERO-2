@@ -30,7 +30,7 @@ knowledge. Learning **writes only via Storage** (Law 3) and never scans reposito
 ## Inputs
 - `trace.closed` (Observability) — the primary raw material.
 - `verify.failed` (Verification) — fault signal for the ledger.
-- `process.failed` / `process.timeout` (Execution) — reliability evidence.
+- `exec.failed` / `exec.timeout` (Execution) — reliability evidence.
 - Repository context (Repository Memory) for grounding lessons.
 
 ## Outputs
@@ -45,7 +45,7 @@ knowledge. Learning **writes only via Storage** (Law 3) and never scans reposito
 ## Events Consumed
 - `trace.closed` (Observability)
 - `verify.failed` (Verification)
-- `process.failed`, `process.timeout` (Execution)
+- `exec.failed`, `exec.timeout` (Execution)
 
 ## Dependencies
 - **Observability** — source of closed traces (raw work memory).

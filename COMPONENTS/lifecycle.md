@@ -1,19 +1,22 @@
 # Lifecycle — Component Specification
 
 ## Purpose
-Lifecycle owns the **state machines for the long-lived things**: the request lifecycle, repository
-onboarding/offboarding, plugin lifecycle, and session wake/sleep. It owns **transition legality** —
-which state may move to which, and under what preconditions (including passed verification gates).
-It complements the Kernel: the Kernel *enforces* gates at admission/routing time, while Lifecycle
-*defines* the legal state graph the Kernel and Scheduler enforce against. Centralizing transition
-legality prevents the V1 drift where lifecycle rules were implicit and scattered across the
-orchestrator.
+Lifecycle owns the **state machines for the long-lived things**: the request lifecycle *definition*,
+repository onboarding/offboarding, plugin lifecycle, and session wake/sleep. It owns **transition
+legality** — which state may move to which, and under what preconditions (including passed
+verification gates). It complements the Kernel: the Kernel *enforces* gates and *advances* request
+state, while Lifecycle *defines* the legal state graph the Kernel and Scheduler enforce against.
+For requests this split is strict (ERRATA C4): Lifecycle authors the legal-transition table,
+delivered to the Kernel as governed config data via `config.changed`; the Kernel's Ledger is the
+sole runtime authority for request lifecycle state and the sole mutator of it. For repos, plugins,
+and sessions, Lifecycle both defines and advances the machines. Centralizing transition legality
+prevents the V1 drift where lifecycle rules were implicit and scattered across the orchestrator.
 
 ## Responsibilities
-- Define and advance the request state machine (received → admitted → planned → verified → executing → completed).
+- Define the request state machine (received → admitted → planned → verified → executing → completed) as an authored legal-transition table; the Kernel alone advances request state against it (ERRATA C4).
 - Own repository onboarding/offboarding lifecycle; emit `repository.onboarded` / `repository.offboarded`.
 - Own plugin lifecycle state transitions; emit `plugin.lifecycle.changed`.
-- Own session wake/sleep; emit `session.woke` / `session.slept`.
+- Own session wake/sleep; emit `session.wake` / `session.sleep` (ERRATA C11 — sole publisher).
 - Enforce transition legality: reject illegal transitions and transitions lacking required verdicts.
 
 ## Owns
@@ -22,6 +25,7 @@ orchestrator.
 - Emission of authoritative state-transition events.
 
 ## Never Owns
+- **Request state advancement at runtime** — the Kernel Ledger is the sole runtime authority and sole mutator of request lifecycle state; Lifecycle authors the table the Kernel loads as config (ERRATA C4).
 - **Gate enforcement at routing time** — the Kernel/Scheduler enforce; Lifecycle defines legality.
 - **Durable writes** — Storage persists state-machine state.
 - **Process spawning / retrieval / the bus** — Execution / Repository Memory / Communication.
@@ -29,28 +33,30 @@ orchestrator.
 - **Plugin registry contents** — Plugin Runtime; Lifecycle drives its *state*, Plugin Runtime enacts registry effects.
 
 ## Inputs
-- `request.admitted` (Kernel) — advance request state.
+- `request.admitted` (Kernel) — observed for definition audit only; the Kernel advances request state (ERRATA C4).
 - `plan.created` / `plan.rejected` (Capability Planning), `verify.passed` / `verify.failed` (Verification) — transition preconditions.
-- `process.completed` / `process.failed` (Execution) — advance/rollback execution state.
+- `exec.completed` / `exec.failed` (Execution) — advance/rollback execution state.
 - `plugin.loaded` / `plugin.unloaded` / `plugin.health.changed` (Plugin Runtime) — plugin-state evidence.
 
 ## Outputs
-- Authoritative state for each long-lived entity (via query API).
+- Authoritative state for repos, plugins, and sessions (via query API). Request state authority lives in the Kernel Ledger; the system-wide request read surface is RSM (ERRATA C4).
 - Legal-transition decisions (accept/reject).
 
 ## Events Published
 - `repository.onboarded` — a repository entered management (triggers indexing, vault provisioning).
 - `repository.offboarded` — a repository left management.
-- `session.woke` — a session resumed.
-- `session.slept` — a session suspended.
-- `request.completed` — a request reached its terminal state legally (all gates passed).
+- `session.wake` — a session resumed (ERRATA C11 canonical name).
+- `session.sleep` — a session suspended (ERRATA C11 canonical name).
 - `plugin.lifecycle.changed` — a plugin's lifecycle state transitioned.
+
+(`request.completed` is published by the **Kernel** — the terminal Ledger transition, per
+`ARCHITECTURE.md`'s event matrix and ERRATA C4. Lifecycle never publishes it.)
 
 ## Events Consumed
 - `request.admitted` (Kernel)
 - `plan.created`, `plan.rejected` (Capability Planning)
 - `verify.passed`, `verify.failed` (Verification)
-- `process.completed`, `process.failed` (Execution)
+- `exec.completed`, `exec.failed` (Execution)
 - `plugin.loaded`, `plugin.unloaded`, `plugin.health.changed` (Plugin Runtime)
 
 ## Dependencies

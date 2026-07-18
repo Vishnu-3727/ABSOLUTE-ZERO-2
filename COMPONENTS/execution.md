@@ -28,7 +28,7 @@ down a caller.
 - **Repository retrieval** — Repository Memory only.
 
 ## Inputs
-- `task.dispatched` (from Scheduling) — the authoritative signal to run something.
+- `task.scheduled` (from Scheduling) — the authoritative signal to run something (ERRATA C14; matrix name).
 - Execution requests carrying command, sandbox profile, caps, and timeout.
 - Selftest-run requests delegated by Verification.
 
@@ -37,13 +37,13 @@ down a caller.
 - Definite terminal status for every spawned process.
 
 ## Events Published
-- `process.started` — a sandboxed process began.
-- `process.completed` — process finished within limits (with exit status).
-- `process.failed` — process failed (non-zero/error) after retry policy exhausted.
-- `process.timeout` — process exceeded its timeout and was contained/killed.
+- `exec.started` — a sandboxed process began.
+- `exec.completed` — process finished within limits (with exit status).
+- `exec.failed` — process failed (non-zero/error) after retry policy exhausted.
+- `exec.timeout` — process exceeded its timeout and was contained/killed.
 
 ## Events Consumed
-- `task.dispatched` (Scheduling)
+- `task.scheduled` (Scheduling) — ERRATA C14
 
 ## Dependencies
 - **Scheduling** — the only authorized dispatcher of executable work.
@@ -52,11 +52,11 @@ down a caller.
 - **Observability** — universal consumer; receives process telemetry and resource accounting.
 
 ## Failure Modes
-- **Runaway / hung process** (V1-H4) → hard timeout kills it; `process.timeout` is emitted; the
+- **Runaway / hung process** (V1-H4) → hard timeout kills it; `exec.timeout` is emitted; the
   caller (e.g. Verification) receives a definite failure and is never crashed by the hang.
 - **Resource exhaustion** → caps enforced; offending process killed and reported, host protected.
 - **Sandbox escape attempt** → isolation denies; process terminated and flagged via `alert.raised` (Observability).
-- **Flaky tool** → bounded retries; after exhaustion emit `process.failed` — never infinite retry.
+- **Flaky tool** → bounded retries; after exhaustion emit `exec.failed` — never infinite retry.
 - **Zombie/orphan** → guaranteed reaping; no leaked processes across restarts.
 
 ## Performance Goals
@@ -65,10 +65,10 @@ down a caller.
 - Determinism (Law 6): identical command + identical sandbox/caps → identical terminal event class (modulo intrinsic tool nondeterminism, which is surfaced, not hidden).
 
 ## Testing Strategy
-- Selftest: run a fast fixture process, assert `process.completed`.
-- Timeout tests: run a deliberately hanging fixture, assert `process.timeout` and caller survival.
+- Selftest: run a fast fixture process, assert `exec.completed`.
+- Timeout tests: run a deliberately hanging fixture, assert `exec.timeout` and caller survival.
 - Cap tests: run a fixture that exceeds mem/CPU caps, assert containment.
-- Retry tests: flaky fixture, assert bounded retries then `process.failed`.
+- Retry tests: flaky fixture, assert bounded retries then `exec.failed`.
 - Orphan/zombie reaping tests across simulated restart.
 
 ## Future Expansion

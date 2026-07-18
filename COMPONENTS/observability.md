@@ -46,7 +46,7 @@ faults and budget breaches first-class, auditable events.
 - **All events** — Observability subscribes to the entire published vocabulary (universal consumer),
   which is what closes the cross-file event loop: every event any component publishes is consumed
   here at minimum. Notable correlators: `request.received`/`request.admitted` (open traces),
-  `request.completed` (close traces), `verify.failed` / `process.failed` / `delivery.failed`
+  `request.completed` (close traces), `verify.failed` / `exec.failed` / `delivery.failed`
   (raise alerts), token/cost measurements (budget accounting).
 
 ## Dependencies
@@ -70,7 +70,7 @@ faults and budget breaches first-class, auditable events.
 ## Testing Strategy
 - Selftest: fixture event stream → asserted trace open/close, metric totals, token/cost accounting.
 - Correlation test: interleaved multi-request events correlate into correct per-request traces.
-- Alerting test: injected `verify.failed`/`process.failed`/`delivery.failed` → `alert.raised` (deduped).
+- Alerting test: injected `verify.failed`/`exec.failed`/`delivery.failed` → `alert.raised` (deduped).
 - Budget-accounting test: token/cost measurements cross threshold → `budget.exceeded`.
 
 ## Future Expansion

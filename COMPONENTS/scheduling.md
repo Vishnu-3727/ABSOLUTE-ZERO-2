@@ -7,6 +7,12 @@ budgets (token *and* time), preemption, and backpressure. Critically, it enforce
 has not passed is never dispatched, no matter its priority. It turns the Kernel's admitted requests
 into an ordered, budget-bounded flow of dispatchable work.
 
+Gate layering (ERRATA C5, per `VAE/03` §3.1/§3.2): Scheduling's gate guards **task dispatch**;
+the Kernel's gate guards **request lifecycle transitions** (completion). Two gates, two objects,
+composed fail-closed — a permit requires both layers. The Kernel is the gate *authority*: it owns
+gate definitions (governed config) and is the sole emitter of `gate.enforced` audit records.
+Scheduling's refusal is a scheduling hold, never a gate verdict.
+
 ## Responsibilities
 - Consume `request.admitted` and place resulting work into priority-ordered, budget-bounded queues.
 - Enforce token + time budgets as ceilings (a V1 strength kept: budget-as-ceiling, not honor-system).
@@ -24,12 +30,13 @@ into an ordered, budget-bounded flow of dispatchable work.
 - **Process spawning** — Execution only; Scheduling decides *when*, Execution decides *how*.
 - **The bus** — Communication only.
 - **Verification logic** — it enforces verdicts, never computes them.
+- **Gate authority** — gate definitions and `gate.enforced` audit records are the Kernel's (ERRATA C5); Scheduling holds ungated work, it never rules on gates.
 - **Repository retrieval** — Repository Memory only.
 
 ## Inputs
 - `request.admitted` (routed work from Kernel).
 - `verify.passed` / `verify.failed` (gate verdicts).
-- `process.completed` / `process.failed` (to free capacity and advance queues).
+- `exec.completed` / `exec.failed` (to free capacity and advance queues).
 - `budget.exceeded` (from Observability's token/cost accounting).
 
 ## Outputs
@@ -37,15 +44,18 @@ into an ordered, budget-bounded flow of dispatchable work.
 - Backpressure signals to upstream producers.
 
 ## Events Published
+- `workflow.created` — a compiled Execution Workflow reached Published (ERRATA C15).
 - `task.scheduled` — work enqueued with priority and budget reservation.
-- `task.dispatched` — work released downstream (gates satisfied, budget available).
+- `task.started` — work released downstream, the dispatch announcement (ERRATA C15; `task.dispatched` is a dead draft name and is never published).
+- `task.completed` / `task.failed` — a unit reached its terminal outcome.
+- `verify.requested` — WS asking Verification for a unit's verdict.
 - `task.preempted` — running/queued work paused or evicted.
-- `backpressure.engaged` — intake throttled due to saturation or budget pressure.
+- `backpressure.engaged` — intake throttled; deferred until the dispatcher-policy phase (ERRATA C15 — chartered, not yet registered or published).
 
 ## Events Consumed
 - `request.admitted` (Kernel)
 - `verify.passed`, `verify.failed` (Verification)
-- `process.completed`, `process.failed`, `process.timeout` (Execution)
+- `exec.completed`, `exec.failed`, `exec.timeout` (Execution)
 - `budget.exceeded` (Observability)
 
 ## Dependencies
@@ -57,8 +67,8 @@ into an ordered, budget-bounded flow of dispatchable work.
 - **Communication** — carries all dispatch/backpressure events.
 
 ## Failure Modes
-- **Gate bypass attempt** (V1-H3) → structurally impossible: `task.dispatched` requires a matching
-  `verify.passed`; a high-priority task with a failing/absent gate is held, never fast-tracked.
+- **Gate bypass attempt** (V1-H3) → structurally impossible: `task.started` requires a matching
+  `verify.passed` (ERRATA C15); a high-priority task with a failing/absent gate is held, never fast-tracked.
 - **Budget exhaustion** → preempt and emit `task.preempted` + `backpressure.engaged`; never overspend silently.
 - **Downstream saturation / timeout storm** → backpressure upstream; do not keep dispatching into a failing Execution.
 - **Queue-state loss** → recover from Storage-persisted state; unpersisted transient work fails loud, not silently dropped.

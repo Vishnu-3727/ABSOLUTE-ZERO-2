@@ -30,7 +30,7 @@ a hanging check can never crash the verifier (the V1-H4 lesson).
 ## Inputs
 - `plan.created` (Capability Planning) — plans to check.
 - Diffs/artifacts submitted for verification (via Storage-backed references).
-- `process.completed` / `process.failed` / `process.timeout` (Execution) — selftest outcomes.
+- `exec.completed` / `exec.failed` / `exec.timeout` (Execution) — selftest outcomes.
 - Repository context (Repository Memory) for dependency-aware selftest selection.
 
 ## Outputs
@@ -43,7 +43,7 @@ a hanging check can never crash the verifier (the V1-H4 lesson).
 
 ## Events Consumed
 - `plan.created` (Capability Planning)
-- `process.completed`, `process.failed`, `process.timeout` (Execution) — selftest results.
+- `exec.completed`, `exec.failed`, `exec.timeout` (Execution) — selftest results.
 - `write.committed` (Storage) — a diff/artifact landed and needs verification.
 
 ## Dependencies
@@ -56,7 +56,7 @@ a hanging check can never crash the verifier (the V1-H4 lesson).
 ## Failure Modes
 - **Committing over a FAIL** (V1-H3) → structurally impossible: `verify.failed` blocks the gate at
   Kernel/Scheduler; there is no honor-system path around it.
-- **Hanging check crashes verifier** (V1-H4) → impossible: checks run in Execution; a `process.timeout`
+- **Hanging check crashes verifier** (V1-H4) → impossible: checks run in Execution; a `exec.timeout`
   becomes `verify.failed`, and Verification stays alive.
 - **Missing verdict** → treated by enforcers as *not passed*; Verification also guarantees it emits a
   terminal verdict per gated item rather than going silent.
@@ -70,7 +70,7 @@ a hanging check can never crash the verifier (the V1-H4 lesson).
 ## Testing Strategy
 - Selftest: fixture plan/diff + fixture selftest outcomes → asserted verdicts.
 - Delegation test: assert Verification spawns no process directly (all via Execution).
-- Timeout test: Execution reports `process.timeout` → Verification emits `verify.failed`, stays up.
+- Timeout test: Execution reports `exec.timeout` → Verification emits `verify.failed`, stays up.
 - Scope test: changed engine → dependents included in selftest set (via Repository Memory).
 
 ## Future Expansion

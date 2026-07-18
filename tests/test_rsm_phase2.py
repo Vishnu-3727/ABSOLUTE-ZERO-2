@@ -33,7 +33,7 @@ class ReducerPurityTests(unittest.TestCase):
 
     def _fixture(self):
         return {
-            "classify.completed": {"classification_ref": "c1"},
+            "intent.classified": {"classification_ref": "c1"},
             "plan.created": {"plan_id": "p1", "revision": 0},
             "plan.revised": {"plan_id": "p1", "revision": 1},
             "plan.validated": {"verdict_ref": "v1"},
@@ -198,7 +198,7 @@ class FullPipelineTests(unittest.TestCase):
         self.assertEqual(store.state_of("r1"), transitions.ACTIVE)
 
         self.assertEqual(ing.process(make_event(
-            "e1", "classify.completed", "r1", 1, {"classification_ref": "c1"})), APPLIED)
+            "e1", "intent.classified", "r1", 1, {"classification_ref": "c1"})), APPLIED)
         self.assertEqual(ing.process(make_event(
             "e2", "plan.created", "r1", 1, {"plan_id": "p1", "revision": 0})), APPLIED)
         self.assertEqual(ing.process(make_event(

@@ -178,7 +178,7 @@ class EndToEndLifecycleTests(unittest.TestCase):
             ("request.received", make_event("e0", "request.received", request_id, 1,
                                               {"declared_type": "type.alpha", "origin": "frontend"})),
             # plan
-            ("classify.completed", make_event("e1", "classify.completed", request_id, 1,
+            ("intent.classified", make_event("e1", "intent.classified", request_id, 1,
                                                {"classification_ref": "cls-1"})),
             ("plan.created", make_event("e2", "plan.created", request_id, 1,
                                          {"plan_id": "p1", "revision": 0})),

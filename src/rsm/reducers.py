@@ -42,7 +42,7 @@ class ReducerFault(Exception):
 # does) -----------------------------------------------------------------
 SCHEMAS = {
     BIRTH_FAMILY: {1: ("declared_type", "origin")},
-    "classify.completed": {1: ("classification_ref",)},
+    "intent.classified": {1: ("classification_ref",)},
     "plan.created": {1: ("plan_id", "revision")},
     "plan.revised": {1: ("plan_id", "revision")},
     "plan.validated": {1: ("verdict_ref",)},
@@ -126,8 +126,8 @@ def birth_reducer(event):
 
 
 # -- Plan block (Capability Planning; Verification) --------------------------
-def reduce_classify_completed(record, event):
-    payload = _validate("classify.completed", event)
+def reduce_intent_classified(record, event):
+    payload = _validate("intent.classified", event)
     plan = dict(record.plan)
     plan["classification_ref"] = payload["classification_ref"]
     return record.evolve(plan=plan)
@@ -329,7 +329,7 @@ def reduce_request_failed(record, event):
 
 
 REGISTRY = {
-    "classify.completed": reduce_classify_completed,
+    "intent.classified": reduce_intent_classified,
     "plan.created": reduce_plan_created,
     "plan.revised": reduce_plan_revised,
     "plan.validated": reduce_plan_validated,

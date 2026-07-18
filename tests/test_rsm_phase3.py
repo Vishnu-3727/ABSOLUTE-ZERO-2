@@ -192,7 +192,7 @@ class PerBlockReadTests(unittest.TestCase):
         store, journal = Store(), Journal()
         ing = Ingest(store, journal)
         _drive_birth(ing, "r1", "e0")
-        ing.process(make_event("e1", "classify.completed", "r1", 1, {"classification_ref": "c1"}))
+        ing.process(make_event("e1", "intent.classified", "r1", 1, {"classification_ref": "c1"}))
         ing.process(make_event("e2", "plan.created", "r1", 1, {"plan_id": "p1", "revision": 0}))
         ing.process(make_event("e3", "task.scheduled", "r1", 1,
                                 {"task_id": "t1", "budget_granted": 10}))
