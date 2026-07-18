@@ -138,9 +138,9 @@ class OsSession:
             },
             "requests": described,
             "event_count": self._seq,
-            "unwired": ["VAE (verification auto-pass)", "PRT binding",
-                        "CP discovery phases 2-4", "LIE", "SGPE", "RSM live",
-                        "UMS/CM context"],
+            "unwired": ["PRT binding", "CP discovery phases 2-4",
+                        "VAE delegated checks (static wired)",
+                        "LIE", "RSM live", "UMS/CM context"],
         }
 
     def storage_namespaces(self):
