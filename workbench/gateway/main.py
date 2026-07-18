@@ -13,9 +13,12 @@ import tempfile
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 from session import OsSession
+
+UI = os.path.join(os.path.dirname(os.path.abspath(__file__)), "ui.html")
 
 VAULT = os.environ.get("AZ_VAULT",
                        os.path.join(tempfile.gettempdir(), "az-workbench-vault"))
@@ -58,6 +61,18 @@ def _broadcast(batch):
 class SubmitRequest(BaseModel):
     intent: str
     goals: list[str] = []
+
+
+@app.get("/", include_in_schema=False)
+def ui():
+    return FileResponse(UI, media_type="text/html")
+
+
+@app.get("/az-logo.png", include_in_schema=False)
+@app.get("/favicon.ico", include_in_schema=False)
+def logo():
+    return FileResponse(os.path.join(os.path.dirname(UI), "az-logo.png"),
+                        media_type="image/png")
 
 
 @app.get("/api/system")

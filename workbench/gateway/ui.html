@@ -1,0 +1,1290 @@
+<title>ABSOLUTE-ZERO — Agentic Operating System</title>
+<style>
+  :root{
+    --bg:#04060c;
+    --bg2:#060a14;
+    --panel:#0a1220;
+    --panel-solid:#0a1120;
+    --panel-hi:rgba(16,28,48,.85);
+    --border:rgba(70,140,210,.16);
+    --border-hi:rgba(90,170,235,.34);
+    --ink:#dbe7f6;
+    --ink-dim:#9fb2c9;
+    --mut:#5f7290;
+    --mut2:#47586f;
+    --cyan:#33a7ef;
+    --cyan-b:#4fc9f7;
+    --blue:#1e63b8;
+    --accent:#2f9ff0;
+    --green:#33d69f;
+    --yellow:#e8b93a;
+    --red:#ef5350;
+    --violet:#8b7bf0;
+    --glow:0 0 22px rgba(51,167,239,.35);
+    --r:12px;
+    --fs:"Segoe UI",system-ui,-apple-system,Roboto,Arial,sans-serif;
+    --fm:"SF Mono","JetBrains Mono","Consolas",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{background:var(--bg);}
+  body{
+    font-family:var(--fs);
+    color:var(--ink);
+    -webkit-font-smoothing:antialiased;
+    background:
+      radial-gradient(1200px 700px at 78% -8%, rgba(30,90,160,.18), transparent 60%),
+      radial-gradient(900px 600px at 12% 108%, rgba(30,90,160,.10), transparent 60%),
+      var(--bg);
+    padding:14px;
+    font-size:13px;
+    line-height:1.35;
+  }
+  .app{max-width:1536px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
+  .num{font-variant-numeric:tabular-nums}
+  .mono{font-family:var(--fm)}
+
+  /* panels */
+  .panel{
+    background:var(--panel);
+    border:1px solid var(--border);
+    border-radius:var(--r);
+    position:relative;
+  }
+  .panel-glow{box-shadow:inset 0 0 0 1px rgba(90,170,235,.05), 0 8px 30px rgba(0,0,0,.35)}
+
+  .lbl{font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut);font-weight:600}
+  .ttl{font-size:15px;letter-spacing:.14em;text-transform:uppercase;font-weight:700;color:#eaf2fd}
+  .sub{font-size:11px;color:var(--mut);letter-spacing:.02em}
+  .val{font-weight:600;color:#eaf2fd}
+  .accent{color:var(--cyan-b)}
+  .link{font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--cyan);font-weight:600;cursor:pointer}
+
+  /* ============ HEADER ============ */
+  .header{display:flex;align-items:center;gap:14px;padding:12px 16px;min-height:74px;flex-wrap:nowrap;overflow:hidden}
+  .brand{display:flex;align-items:center;gap:12px;flex:0 0 auto}
+  .logo{width:46px;height:46px;flex:0 0 auto;object-fit:contain}
+  .brand h1{font-size:24px;letter-spacing:.12em;font-weight:800;color:#f2f7ff}
+  .brand .sub{font-size:10px;letter-spacing:.28em;margin-top:2px}
+  .hdiv{width:1px;height:40px;background:var(--border)}
+  .stat{display:flex;flex-direction:column;gap:5px;min-width:0;flex:0 1 auto}
+  .stat .k{font-size:9px;letter-spacing:.18em;color:var(--mut2);text-transform:uppercase;font-weight:600}
+  .stat .v{font-size:13px;letter-spacing:.06em;color:#dbe7f6;font-weight:600}
+  .dot{width:7px;height:7px;border-radius:50%;display:inline-block}
+  .dot.g{background:var(--green);box-shadow:0 0 8px var(--green)}
+  .tokbar{width:132px;height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:3px}
+  .tokbar>i{display:block;height:100%;width:26%;background:linear-gradient(90deg,#1f6fc0,#4fc9f7);border-radius:3px}
+  .clock{margin-left:auto;text-align:right;line-height:1.3}
+  .clock .t{font-size:18px;font-weight:600;letter-spacing:.05em}
+  .clock .d{font-size:10px;color:var(--mut);letter-spacing:.1em}
+  .hicons{display:flex;align-items:center;gap:14px;color:var(--ink-dim)}
+  .hicons svg{width:18px;height:18px;cursor:pointer;opacity:.8}
+  .hicons svg:hover{opacity:1;color:var(--cyan-b)}
+  .orb{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 40%,rgba(60,160,240,.4),rgba(10,40,80,.6));
+    border:1px solid var(--border-hi);box-shadow:var(--glow)}
+  .orb svg{width:26px;height:26px;color:var(--cyan-b)}
+
+  /* ============ ROW GRIDS ============ */
+  .rowA{display:grid;grid-template-columns:232px minmax(0,1fr) 344px;gap:12px}
+  .rowB{display:grid;grid-template-columns:232px 1.35fr 1fr 1fr 1.02fr 344px;gap:12px}
+  .rowC{display:grid;grid-template-columns:minmax(0,1fr) 344px;gap:12px}
+
+  /* ============ SIDEBAR ============ */
+  .side{padding:10px}
+  .nav{display:flex;flex-direction:column;gap:2px}
+  .nav a{display:flex;align-items:center;gap:13px;padding:11px 14px;border-radius:9px;color:var(--ink-dim);
+    font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600;text-decoration:none;position:relative}
+  .nav a svg{width:17px;height:17px;flex:0 0 auto;opacity:.85}
+  .nav a:hover{background:rgba(60,140,220,.08);color:#eaf2fd}
+  .nav a.on{background:linear-gradient(90deg,rgba(33,110,190,.55),rgba(30,80,150,.15));color:#fff;
+    box-shadow:inset 0 0 0 1px rgba(90,170,235,.3), var(--glow)}
+  .nav a.on::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--cyan-b)}
+  .badge{margin-left:auto;font-size:8px;letter-spacing:.14em;padding:2px 6px;border-radius:4px;
+    background:rgba(51,167,239,.18);color:var(--cyan-b);border:1px solid var(--border-hi)}
+
+  /* ============ EXECUTION FLOW (center) ============ */
+  .flow{padding:16px 18px}
+  .flow-head{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:6px}
+  .tabs{display:flex;align-items:center;gap:6px}
+  .tab{display:flex;align-items:center;gap:6px;padding:6px 11px;border-radius:7px;font-size:10px;letter-spacing:.12em;
+    text-transform:uppercase;font-weight:600;color:var(--mut);border:1px solid transparent;cursor:pointer}
+  .tab svg{width:13px;height:13px}
+  .tab.on{background:rgba(33,110,190,.45);color:#eaf2fd;border-color:var(--border-hi);box-shadow:var(--glow)}
+  .tab.icon{padding:6px;color:var(--mut)}
+
+  .tree{margin-top:20px;display:flex;flex-direction:column;align-items:center;gap:24px;position:relative}
+  .tier{display:flex;justify-content:center;gap:16px;width:100%;position:relative}
+  .node{
+    background:linear-gradient(180deg,rgba(14,24,42,.9),rgba(8,15,28,.9));
+    border:1px solid var(--border);border-radius:10px;padding:11px 13px;
+    display:flex;align-items:center;gap:11px;flex:1 1 0;min-width:0;max-width:250px;position:relative}
+  .node.kernel{flex:0 1 250px;border-color:var(--border-hi);box-shadow:0 0 26px rgba(51,167,239,.18)}
+  .node.active{border-color:var(--border-hi);box-shadow:0 0 22px rgba(51,167,239,.28)}
+  .node .ic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;flex:0 0 auto;
+    background:rgba(40,90,150,.28);border:1px solid var(--border);color:var(--cyan-b)}
+  .node .ic svg{width:18px;height:18px}
+  .node .bd{display:flex;flex-direction:column;gap:2px;min-width:0}
+  .node .row1{display:flex;align-items:center;gap:8px}
+  .node .n{font-size:10px;color:var(--mut);font-weight:700}
+  .node .t{font-size:11px;letter-spacing:.05em;text-transform:uppercase;font-weight:700;color:#eaf2fd;line-height:1.2}
+  .node .s{font-size:10.5px;color:var(--mut)}
+  .node .st{margin-left:auto;flex:0 0 auto}
+  .ok{color:var(--green)}
+  .spin{color:var(--cyan-b)}
+  .node .st svg{width:15px;height:15px}
+  .research .ic{background:rgba(30,70,120,.3)}
+  .research .n{color:var(--cyan-b)}
+
+  .legend{display:flex;gap:22px;margin-top:26px;padding-top:0}
+  .legend span{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .lg{width:9px;height:9px;border-radius:3px;display:inline-block}
+
+  /* connector pips between tiers */
+  .tier::before{content:"";position:absolute;top:-26px;left:50%;transform:translateX(-50%);width:1px;height:26px;background:linear-gradient(var(--border-hi),transparent)}
+  .tier.first::before{display:none}
+
+  /* ============ SYSTEM OVERVIEW ============ */
+  .sysov{padding:14px;display:flex;flex-direction:column;gap:12px}
+  .live{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--green);font-weight:600}
+  .terrain{position:relative;height:148px;border-radius:10px;overflow:hidden;
+    background:
+      radial-gradient(120px 120px at 30% 58%, rgba(40,120,200,.35), transparent 70%),
+      linear-gradient(180deg,#0a1830,#050c18)}
+  .terrain svg{position:absolute;inset:0;width:100%;height:100%}
+  .gauge{position:absolute;left:16px;top:50%;transform:translateY(-50%);text-align:center}
+  .gauge .temp{font-size:24px;font-weight:700;color:#eaf2fd;letter-spacing:.02em}
+  .gauge .cap{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .range{display:flex;flex-direction:column;gap:5px;align-items:flex-end;position:absolute;right:14px;top:50%;transform:translateY(-50%)}
+  .range .k{font-size:9px;letter-spacing:.14em;text-transform:uppercase;color:var(--mut)}
+  .range .v{font-size:12px;color:#cfe0f2;font-weight:600}
+  .rbar{width:120px;height:4px;border-radius:3px;background:rgba(255,255,255,.1);overflow:hidden}
+  .rbar>i{display:block;height:100%;width:62%;background:linear-gradient(90deg,#1f6fc0,#4fc9f7)}
+  .s3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;padding-top:2px}
+  .s3 .k{font-size:9px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut);margin-bottom:4px}
+  .s3 .v{font-size:14px;font-weight:700;color:#eaf2fd}
+  .s3 .v.g{color:var(--green)}
+
+  /* ============ TOKEN USAGE ============ */
+  .tok{padding:14px}
+  .tok-body{display:flex;align-items:center;gap:14px;margin-top:10px}
+  .donut{position:relative;flex:0 0 auto}
+  .donut .cx{position:absolute;inset:0;display:grid;place-content:center;text-align:center}
+  .donut .cx b{font-size:20px;color:#eaf2fd}
+  .donut .cx span{font-size:9px;color:var(--mut)}
+  .tok-legend{display:flex;flex-direction:column;gap:9px;flex:1}
+  .tl{display:flex;align-items:center;gap:8px;font-size:11px}
+  .tl .c{width:9px;height:9px;border-radius:3px}
+  .tl .nm{color:var(--ink-dim)}
+  .tl .pc{margin-left:auto;color:#cfe0f2;font-weight:600}
+  .eff{display:flex;justify-content:space-between;align-items:center;margin-top:14px;padding-top:12px;border-top:1px solid var(--border)}
+  .eff .k{font-size:11px;color:var(--ink-dim);letter-spacing:.02em}
+  .eff .v{font-size:14px;font-weight:700;color:var(--green)}
+
+  /* ============ AZ-OS card ============ */
+  .azos{padding:16px;display:flex;flex-direction:column;gap:12px;align-items:center;text-align:center}
+  .azos .gem{width:118px;height:118px;margin:2px auto}
+  .azos h3{font-size:16px;letter-spacing:.1em;font-weight:700;color:#eaf2fd}
+  .azos .v{font-size:10px;color:var(--mut);letter-spacing:.1em;margin-top:-6px}
+  .azos p{font-size:11px;color:var(--ink-dim);line-height:1.5}
+  .azos .foot{display:flex;align-items:center;gap:8px;width:100%;justify-content:flex-start;padding-top:8px;border-top:1px solid var(--border);margin-top:2px}
+  .azos .foot .av{width:22px;height:22px;border-radius:50%;background:rgba(40,90,150,.4);display:grid;place-items:center;color:var(--cyan-b)}
+  .azos .foot .av svg{width:12px;height:12px}
+  .azos .foot span{font-size:11px;color:var(--ink-dim)}
+
+  /* ============ small card generic ============ */
+  .card{padding:14px;display:flex;flex-direction:column}
+  .card-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .pill{font-size:9px;letter-spacing:.1em;padding:3px 8px;border-radius:6px;border:1px solid var(--border);color:var(--ink-dim);display:flex;align-items:center;gap:4px}
+
+  /* performance chart */
+  .chart{position:relative;height:150px}
+  .chart .yl{position:absolute;left:0;top:0;bottom:18px;width:30px;display:flex;flex-direction:column;justify-content:space-between;font-size:8.5px;color:var(--mut2);text-align:right;padding-right:6px}
+  .chart .plot{position:absolute;left:32px;right:0;top:0;bottom:18px}
+  .chart .plot svg{width:100%;height:100%}
+  .chart .xl{position:absolute;left:32px;right:0;bottom:0;display:flex;justify-content:space-between;font-size:8.5px;color:var(--mut2)}
+  .clg{display:flex;gap:14px;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);flex-wrap:wrap}
+  .clg span{display:flex;align-items:center;gap:6px;font-size:10px;letter-spacing:.06em;color:var(--ink-dim)}
+  .clg i{width:14px;height:2px;border-radius:2px;display:inline-block}
+
+  /* memory insights */
+  .mem-body{display:flex;align-items:center;gap:14px}
+  .mem-rows{display:flex;flex-direction:column;gap:9px;flex:1}
+  .mr{display:flex;align-items:center;gap:8px;font-size:11px}
+  .mr .c{width:8px;height:8px;border-radius:2px}
+  .mr .nm{color:var(--ink-dim)}
+  .mr .vv{margin-left:auto;color:#cfe0f2;font-weight:600}
+  .mem-total{display:flex;justify-content:space-between;margin-top:12px;padding-top:10px;border-top:1px solid var(--border);font-size:12px}
+  .mem-total .k{color:var(--ink-dim)}
+  .mem-total .v{color:var(--cyan-b);font-weight:700}
+
+  /* active plugins */
+  .plist{display:flex;flex-direction:column;gap:11px;flex:1}
+  .pl{display:flex;align-items:center;gap:10px;font-size:11.5px}
+  .pl .pi{width:24px;height:24px;border-radius:6px;background:rgba(40,90,150,.25);display:grid;place-items:center;color:var(--cyan-b);flex:0 0 auto}
+  .pl .pi svg{width:13px;height:13px}
+  .pl .nm{color:#dbe7f6}
+  .pl .vv{margin-left:auto;color:var(--mut);font-size:10px}
+  .pl .st{width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 6px var(--green)}
+  .pfoot{margin-top:12px;padding-top:10px;border-top:1px solid var(--border);text-align:center;color:var(--cyan-b);font-size:12px;font-weight:600}
+
+  /* reasoning status */
+  .reason-body{display:flex;gap:12px}
+  .brain{width:96px;height:96px;flex:0 0 auto}
+  .rmeta{display:flex;flex-direction:column;gap:8px;flex:1;font-size:11px}
+  .rmeta .k{font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:var(--mut)}
+  .rmeta .v{font-size:12px;color:#eaf2fd;font-weight:600}
+  .rmeta .v.g{color:var(--green)}
+  .rmeta .v.c{color:var(--cyan-b)}
+  .rprog{margin-top:12px}
+  .rprog .t{display:flex;justify-content:space-between;font-size:10px;color:var(--mut);margin-bottom:5px}
+  .rbar2{height:5px;border-radius:3px;background:rgba(255,255,255,.08);overflow:hidden}
+  .rbar2>i{display:block;height:100%;width:73%;background:linear-gradient(90deg,#1f6fc0,#4fc9f7)}
+
+  /* recent activity */
+  .act{display:flex;flex-direction:column;gap:14px}
+  .ai{display:flex;gap:11px;align-items:flex-start}
+  .ai .ts{font-size:9.5px;color:var(--mut);font-family:var(--fm);white-space:nowrap;padding-top:2px;min-width:44px}
+  .ai .aic{width:24px;height:24px;border-radius:6px;background:rgba(40,90,150,.22);display:grid;place-items:center;color:var(--cyan-b);flex:0 0 auto}
+  .ai .aic svg{width:12px;height:12px}
+  .ai .aic.g{background:rgba(40,150,110,.2);color:var(--green)}
+  .ai .txt .h{font-size:11.5px;color:#eaf2fd;font-weight:600}
+  .ai .txt .d{font-size:10px;color:var(--mut);font-family:var(--fm)}
+
+  /* ============ EXECUTION TIMELINE ============ */
+  .tline{padding:16px 18px}
+  .tsteps{display:flex;align-items:flex-start;justify-content:space-between;margin-top:20px;position:relative}
+  .ts{display:flex;flex-direction:column;align-items:center;gap:8px;flex:1;position:relative;z-index:2}
+  .ts .cir{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;
+    background:radial-gradient(circle at 50% 40%,rgba(20,40,70,.9),rgba(8,14,26,.95));
+    border:1px solid var(--border);color:var(--ink-dim)}
+  .ts .cir svg{width:18px;height:18px}
+  .ts.done .cir{border-color:rgba(51,167,239,.4);color:var(--cyan-b)}
+  .ts.active .cir{border-color:var(--cyan-b);color:var(--cyan-b);box-shadow:0 0 18px rgba(51,167,239,.5)}
+  .ts .nm{font-size:10px;letter-spacing:.02em;color:#cfe0f2;font-weight:600;text-align:center}
+  .ts .tm{font-size:9px;color:var(--mut);font-family:var(--fm)}
+  .tconn{position:absolute;top:22px;left:6%;right:6%;height:1px;background:linear-gradient(90deg,rgba(51,167,239,.4),rgba(51,167,239,.1));z-index:1}
+  .tlegend{display:flex;gap:22px;margin-top:16px}
+  .tlegend span{display:flex;align-items:center;gap:7px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--mut)}
+
+  /* ============ QUICK ACTIONS ============ */
+  .qa{padding:14px}
+  .qgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:10px;margin-top:14px}
+  .qi{display:flex;flex-direction:column;align-items:center;gap:9px;padding:14px 6px;border-radius:10px;
+    background:rgba(14,26,46,.6);border:1px solid var(--border);cursor:pointer}
+  .qi:hover{border-color:var(--border-hi);box-shadow:var(--glow)}
+  .qi .qic{width:34px;height:34px;border-radius:8px;display:grid;place-items:center;color:var(--cyan-b);
+    background:rgba(40,90,150,.22)}
+  .qi.pri .qic{background:linear-gradient(180deg,#2f8fe0,#1d5aa8);color:#fff;box-shadow:var(--glow)}
+  .qi .qic svg{width:17px;height:17px}
+  .qi span{font-size:9.5px;letter-spacing:.04em;color:var(--ink-dim);text-align:center}
+
+  /* ============ COMMAND BAR ============ */
+  .cmd{display:flex;align-items:center;gap:12px;padding:10px 12px}
+  .cmd .cube{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;
+    background:rgba(14,26,46,.7);border:1px solid var(--border);color:var(--cyan-b)}
+  .cmd .cube svg{width:20px;height:20px}
+  .cmd .osbtn{display:flex;align-items:center;gap:8px;padding:11px 14px;border-radius:9px;
+    background:rgba(14,26,46,.7);border:1px solid var(--border);font-size:12px;letter-spacing:.08em;font-weight:600;color:#dbe7f6}
+  .cmd .osbtn svg{width:12px;height:12px;color:var(--mut)}
+  .cmd .inp{flex:1;display:flex;align-items:center;padding:0 16px;border-radius:9px;
+    background:rgba(8,14,26,.7);border:1px solid var(--border);height:46px;color:var(--mut);font-size:13px}
+  .cmd .send{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;color:var(--cyan-b);
+    background:rgba(14,26,46,.7);border:1px solid var(--border);cursor:pointer}
+  .cmd .send:hover{border-color:var(--border-hi);box-shadow:var(--glow)}
+  .cmd .send svg{width:20px;height:20px}
+
+  @media(max-width:1240px){
+    .rowA,.rowB,.rowC{grid-template-columns:1fr}
+    .tier{flex-wrap:wrap}
+  }
+
+  /* interactivity */
+  input.inp{font-family:var(--fs);outline:none;color:#dbe7f6}
+  input.inp::placeholder{color:var(--mut)}
+  input.inp:focus{border-color:var(--border-hi);box-shadow:var(--glow)}
+  .hidden{display:none!important}
+  .nav a,.tab,.qi,.pill,.link,.send,.osbtn,.tab.icon,.hicons svg,.orb,.ts{cursor:pointer}
+  .node.pulse{border-color:var(--cyan-b)!important;box-shadow:0 0 0 2px var(--cyan-b),0 0 26px rgba(79,201,247,.65)!important}
+  .card.pulse{border-color:var(--cyan-b)!important;box-shadow:0 0 0 2px var(--cyan-b),0 0 26px rgba(79,201,247,.45)!important}
+  /* section view */
+  #sectionView{padding:22px 24px;min-height:560px}
+  .sec-head{display:flex;align-items:center;gap:14px;padding-bottom:16px;margin-bottom:20px;border-bottom:1px solid var(--border)}
+  .sec-head .ico{width:46px;height:46px;border-radius:11px;display:grid;place-items:center;flex:0 0 auto;
+    background:rgba(40,90,150,.25);border:1px solid var(--border-hi);color:var(--cyan-b)}
+  .sec-head .ico svg{width:24px;height:24px}
+  .sec-head h2{font-size:20px;letter-spacing:.12em;text-transform:uppercase;font-weight:700;color:#eaf2fd}
+  .sec-head .sub{font-size:12px;color:var(--mut);margin-top:3px}
+  .sec-head .badge{margin-left:auto;font-size:10px;letter-spacing:.14em;padding:5px 11px;border-radius:6px;
+    background:rgba(51,167,239,.15);color:var(--cyan-b);border:1px solid var(--border-hi)}
+  .sec-tiles{display:grid;grid-template-columns:repeat(4,1fr);gap:14px;margin-bottom:22px}
+  .sec-tile{background:rgba(14,24,42,.55);border:1px solid var(--border);border-radius:11px;padding:16px}
+  .sec-tile .k{font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--mut)}
+  .sec-tile .v{font-size:24px;font-weight:700;color:#eaf2fd;margin-top:8px}
+  .sec-tile .v.g{color:var(--green)} .sec-tile .v.c{color:var(--cyan-b)}
+  .sec-list{display:flex;flex-direction:column;gap:1px;border:1px solid var(--border);border-radius:11px;overflow:hidden}
+  .sec-row{display:flex;align-items:center;gap:14px;padding:14px 18px;background:rgba(10,18,32,.5)}
+  .sec-row:hover{background:rgba(20,40,70,.5)}
+  .sec-row .ri{width:30px;height:30px;border-radius:8px;flex:0 0 auto;display:grid;place-items:center;
+    background:rgba(40,90,150,.22);color:var(--cyan-b)}
+  .sec-row .ri svg{width:15px;height:15px}
+  .sec-row .rt{font-size:13px;color:#eaf2fd;font-weight:600}
+  .sec-row .rd{font-size:11px;color:var(--mut);margin-top:2px}
+  .sec-row .rmeta{margin-left:auto;display:flex;align-items:center;gap:14px}
+  .sec-row .rtag{font-size:10px;letter-spacing:.06em;padding:4px 9px;border-radius:6px;border:1px solid var(--border)}
+  .sec-row .rtag.ok{color:var(--green);border-color:rgba(51,214,159,.35)}
+  .sec-row .rtag.warn{color:var(--yellow);border-color:rgba(232,185,58,.35)}
+  .sec-row .rtag.info{color:var(--cyan-b);border-color:var(--border-hi)}
+  @media(max-width:1100px){.sec-tiles{grid-template-columns:repeat(2,1fr)}}
+  .tab,.nav a{transition:background .15s,box-shadow .15s,color .15s}
+  .flowview{margin-top:16px}
+  .tl-list{display:flex;flex-direction:column;gap:9px}
+  .tl-row{display:flex;align-items:center;gap:12px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:rgba(14,24,42,.5)}
+  .tl-row .idx{width:22px;height:22px;flex:0 0 auto;border-radius:6px;display:grid;place-items:center;font-size:10px;font-weight:700;background:rgba(40,90,150,.3);color:var(--cyan-b)}
+  .tl-row .nm{font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:#eaf2fd}
+  .tl-row .tm{margin-left:auto;font-family:var(--fm);font-size:10px;color:var(--mut)}
+  .tl-row .st{width:8px;height:8px;border-radius:50%}
+  .graphmsg{display:grid;place-items:center;min-height:440px;color:var(--mut);text-align:center;gap:10px}
+  .vaultbtn{margin-top:8px;padding:10px 20px;border-radius:9px;border:1px solid var(--border-hi);
+    background:linear-gradient(180deg,#2f8fe0,#1d5aa8);color:#fff;font-size:12px;font-weight:600;
+    letter-spacing:.06em;cursor:pointer;font-family:var(--fs)}
+  .vaultbtn:hover{box-shadow:var(--glow)}
+  .vaultbtn.sm{margin:0;padding:6px 12px;font-size:10px;background:rgba(14,26,46,.7);color:var(--cyan-b)}
+  .graphbar{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+  #graphStats{font-size:11px;color:var(--ink-dim);letter-spacing:.03em}
+  #graphSearch{margin-left:auto;background:rgba(8,14,26,.7);border:1px solid var(--border);border-radius:7px;
+    color:#dbe7f6;font-size:11px;padding:7px 12px;outline:none;font-family:var(--fs);width:170px}
+  #graphSearch:focus{border-color:var(--border-hi)}
+  #graphCanvas{width:100%;height:440px;display:block;border-radius:10px;
+    background:radial-gradient(600px 400px at 50% 45%,rgba(20,50,90,.25),transparent 70%),#060b16;
+    border:1px solid var(--border);cursor:grab}
+  #graphCanvas:active{cursor:grabbing}
+  #toast{position:fixed;bottom:84px;left:50%;transform:translateX(-50%) translateY(8px);background:#0c1830;border:1px solid var(--border-hi);color:#dbe7f6;padding:10px 18px;border-radius:10px;font-size:12px;letter-spacing:.02em;box-shadow:var(--glow);opacity:0;transition:opacity .25s,transform .25s;pointer-events:none;z-index:50}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+  @media(prefers-reduced-motion:reduce){*{transition:none!important}}
+  /* note search + preview */
+  #searchResults{position:fixed;bottom:78px;left:50%;transform:translateX(-50%);width:min(760px,82vw);max-height:340px;overflow:auto;background:#0a1424;border:1px solid var(--border-hi);border-radius:12px;box-shadow:0 14px 44px rgba(0,0,0,.6);z-index:60;padding:6px}
+  .sr{padding:9px 12px;border-radius:8px;cursor:pointer}
+  .sr:hover,.sr.act{background:rgba(30,60,100,.5)}
+  .sr .n{font-size:12px;color:#eaf2fd;font-weight:600}
+  .sr .s{font-size:10px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;font-family:var(--fm)}
+  #noteModal{position:fixed;inset:0;background:rgba(2,6,14,.72);z-index:80;display:flex;align-items:center;justify-content:center;padding:40px}
+  #noteModal .box{background:#0a1424;border:1px solid var(--border-hi);border-radius:14px;width:min(820px,92vw);max-height:82vh;display:flex;flex-direction:column;box-shadow:0 22px 64px rgba(0,0,0,.7)}
+  #noteModal .mh{display:flex;align-items:center;gap:12px;padding:15px 20px;border-bottom:1px solid var(--border)}
+  #noteModal .mh h3{font-size:15px;color:#eaf2fd;font-weight:700;letter-spacing:.03em}
+  #noteModal .mh .path{font-size:10px;color:var(--mut);font-family:var(--fm)}
+  #noteModal .mx{margin-left:auto;cursor:pointer;color:var(--mut);font-size:22px;line-height:1;background:none;border:none}
+  #noteModal .mx:hover{color:#eaf2fd}
+  #noteModal .mb{padding:18px 22px;overflow:auto;white-space:pre-wrap;font-size:12.5px;line-height:1.65;color:#c8d6e8;font-family:var(--fm)}
+</style>
+
+<div class="app">
+
+  <!-- ============ HEADER ============ -->
+  <header class="panel panel-glow header">
+    <div class="brand">
+      <!-- LOGO PLACEHOLDER: drop your logo file next to this HTML as "az-logo.png" -->
+      <img class="logo" src="az-logo.png" alt="AZ">
+      <div>
+        <h1>ABSOLUTE-ZERO</h1>
+        <div class="sub">AGENTIC OPERATING SYSTEM</div>
+      </div>
+    </div>
+    <div class="hdiv"></div>
+    <div class="stat"><span class="k">Request ID</span><span class="v mono" id="hdrReq">REQ-2025-05-18-0001</span></div>
+    <div class="hdiv"></div>
+    <div class="stat"><span class="k">Status</span><span class="v" id="hdrStatus"><span class="dot g"></span> EXECUTING</span></div>
+    <div class="hdiv"></div>
+    <div class="stat"><span class="k">Mode</span><span class="v accent">AUTONOMOUS</span></div>
+    <div class="hdiv"></div>
+    <div class="stat"><span class="k">Vault</span><span class="v" id="hdrVault">Not connected</span></div>
+    <div class="clock">
+      <div class="t num" id="clockT">15:42:18</div>
+      <div class="d">May 18, 2025</div>
+    </div>
+    <div class="hicons">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 8a6 6 0 0112 0c0 7 3 8 3 8H3s3-1 3-8"/><path d="M10 21a2 2 0 004 0"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 14v5a1 1 0 001 1h5M20 10V5a1 1 0 00-1-1h-5M15 4l5 5M9 20l-5-5"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 00-1.7-1l-.4-2.6H9.6l-.4 2.6a7 7 0 00-1.7 1l-2.4-1-2 3.4 2 1.6a7 7 0 000 2l-2 1.6 2 3.4 2.4-1a7 7 0 001.7 1l.4 2.6h4.8l.4-2.6a7 7 0 001.7-1l2.4 1 2-3.4-2-1.6a7 7 0 00.1-1z"/></svg>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 00-.1-1l2-1.6-2-3.4-2.4 1a7 7 0 00-1.7-1l-.4-2.6H9.6l-.4 2.6a7 7 0 00-1.7 1l-2.4-1-2 3.4 2 1.6a7 7 0 000 2l-2 1.6 2 3.4 2.4-1a7 7 0 001.7 1l.4 2.6h4.8l.4-2.6a7 7 0 001.7-1l2.4 1 2-3.4-2-1.6a7 7 0 00.1-1z"/></svg>
+    </div>
+    <div class="orb">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l8.5 5v10L12 22 3.5 17V7z"/><path d="M12 2v20M3.5 7l8.5 5 8.5-5M3.5 17l8.5-5 8.5 5"/></svg>
+    </div>
+  </header>
+
+  <div id="dashboardView">
+  <!-- ============ ROW A ============ -->
+  <div class="rowA">
+
+    <!-- SIDEBAR -->
+    <aside class="panel panel-glow side">
+      <nav class="nav">
+        <a href="#" class="on">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 11l9-8 9 8"/><path d="M5 10v9h5v-5h4v5h5v-9"/></svg>DASHBOARD</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 9h6M9 13h6M9 17h3"/></svg>EXECUTION FLOW</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg>WORKFLOWS</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/></svg>MEMORY</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/></svg>PLUGINS</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/></svg>REASONING</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><circle cx="12" cy="11" r="2"/></svg>RESEARCH<span class="badge">NEW</span></a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="9"/><path d="M8 12l3 3 5-6"/></svg>VERIFICATION</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 20V10M9 20V4M14 20v-7M19 20v-11"/></svg>EXPERIENCE</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/></svg>GOVERNANCE</a>
+        <a href="#"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>SYSTEM</a>
+      </nav>
+    </aside>
+
+    <!-- EXECUTION FLOW -->
+    <section class="panel panel-glow flow">
+      <div class="flow-head">
+        <div>
+          <div class="ttl">EXECUTION FLOW</div>
+          <div class="sub" style="margin-top:4px">Real-time visualization of the operating system</div>
+        </div>
+        <div class="tabs">
+          <div class="tab on" data-view="flow"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="18" cy="6" r="2"/><circle cx="12" cy="18" r="2"/><path d="M6 8v3a2 2 0 002 2h8a2 2 0 002-2V8M12 13v3"/></svg>FLOW</div>
+          <div class="tab" data-view="timeline"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M8 4v16"/></svg>TIMELINE</div>
+          <div class="tab" data-view="graph"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="5" cy="12" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 11l10-4M7 13l10 4"/></svg>GRAPH</div>
+          <div class="tab icon" id="expandBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3H3v5M16 3h5v5M8 21H3v-5M16 21h5v-5"/></svg></div>
+        </div>
+      </div>
+
+      <div class="tree" id="viewFlow">
+        <!-- tier 1 -->
+        <div class="tier first">
+          <div class="node kernel">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M3 14h4M17 10h4M17 14h4"/></svg></div>
+            <div class="bd">
+              <div class="row1"><span class="n">1</span><span class="t">EXECUTION KERNEL</span></div>
+              <div class="s">Orchestrating Request</div>
+            </div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+        </div>
+        <!-- tier 2 -->
+        <div class="tier">
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M17 10h4"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">2</span><span class="t">REQUEST STATE MANAGER</span></div><div class="s">State: Active</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6M5 12c0 1.7 3.1 3 7 3s7-1.3 7-3"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">3</span><span class="t">UNIFIED MEMORY SYSTEM</span></div><div class="s">Memory: 1.42 TB</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3a4 4 0 00-4 4 3 3 0 00-2 5 3 3 0 001 5 3 3 0 005 1 3 3 0 005-1 3 3 0 001-5 3 3 0 00-2-5 4 4 0 00-4-4z"/><path d="M12 8v8"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">4</span><span class="t">CONTEXT MANAGER</span></div><div class="s">Context: 66.3K tokens</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+        </div>
+        <!-- tier 3 -->
+        <div class="tier">
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v3a2 2 0 004 0V3h4v4h-1a2 2 0 000 4h1v6h-4v-1a2 2 0 00-4 0v1H6v-6h1a2 2 0 000-4H6V3z"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">5</span><span class="t">CAPABILITY PLANNER</span></div><div class="s">Capabilities: 12</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="9" y="3" width="6" height="4" rx="1"/><rect x="3" y="17" width="6" height="4" rx="1"/><rect x="15" y="17" width="6" height="4" rx="1"/><path d="M12 7v4M6 17v-2h12v2M12 15v-4"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">6</span><span class="t">WORKFLOW SCHEDULER</span></div><div class="s">Steps: 24</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+        </div>
+        <!-- tier 4 -->
+        <div class="tier">
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 3h6l4 4v14H8z"/><path d="M14 3v4h4M11 12h4M11 16h4"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">7</span><span class="t">PLUGIN RUNTIME</span></div><div class="s">Plugins: 7 Active</div></div>
+            <div class="st ok"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M5 12l4 4 10-10"/></svg></div>
+          </div>
+          <div class="node active">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2.5"/><circle cx="5" cy="6" r="2"/><circle cx="19" cy="6" r="2"/><circle cx="5" cy="18" r="2"/><circle cx="19" cy="18" r="2"/><path d="M7 7l3 3M17 7l-3 3M7 17l3-3M17 17l-3-3"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">8</span><span class="t">REASONING ORCHESTRATOR</span></div><div class="s">Model: Claude 3 Opus</div></div>
+            <div class="st spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8" opacity=".3"/><path d="M12 4a8 8 0 018 8"/></svg></div>
+          </div>
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">9</span><span class="t">VERIFICATION ENGINE</span></div><div class="s">Status: Verifying</div></div>
+            <div class="st spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8" opacity=".3"/><path d="M12 4a8 8 0 018 8"/></svg></div>
+          </div>
+        </div>
+        <!-- tier 5 -->
+        <div class="tier">
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 5c3-1 5-1 8 1 3-2 5-2 8-1v13c-3-1-5-1-8 1-3-2-5-2-8-1z"/><path d="M12 6v13"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">10</span><span class="t">EXPERIENCE ENGINE</span></div><div class="s">Insights: 38 New</div></div>
+            <div class="st spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 12a8 8 0 10-2.3 5.6M20 20v-4h-4"/></svg></div>
+          </div>
+          <div class="node research active">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M20 20l-5-5"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">R</span><span class="t">RESEARCH ENGINE</span></div><div class="s">Researching...</div></div>
+            <div class="st spin"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="12" cy="12" r="8" opacity=".3"/><path d="M12 4a8 8 0 018 8"/></svg></div>
+          </div>
+          <div class="node">
+            <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 21V4l1-1h13l-2 4 2 4H6"/></svg></div>
+            <div class="bd"><div class="row1"><span class="n">11</span><span class="t">DONE</span></div><div class="s">Execution Completed</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="flowview hidden" id="viewTimeline"></div>
+      <div class="flowview hidden" id="viewGraph">
+        <div class="graphmsg" id="graphIntro">
+          <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--cyan-b)" stroke-width="1.4"><circle cx="5" cy="12" r="2.5"/><circle cx="19" cy="6" r="2.5"/><circle cx="19" cy="18" r="2.5"/><circle cx="12" cy="12" r="2.5"/><path d="M7 11l3 .5M14 11l3-4M14 13l3 4"/></svg>
+          <div style="font-size:13px;color:#cfe0f2;letter-spacing:.05em">Obsidian Knowledge Graph</div>
+          <div>Connect your vault to visualize notes and their links</div>
+          <button class="vaultbtn" id="connectVault">Connect Obsidian Vault</button>
+          <input type="file" id="vaultInput" webkitdirectory directory multiple hidden>
+          <div id="graphErr" style="color:var(--red);font-size:11px"></div>
+        </div>
+        <div class="hidden" id="graphWrap">
+          <div class="graphbar">
+            <span id="graphStats"></span>
+            <input type="text" id="graphSearch" placeholder="Search notes…" autocomplete="off">
+            <button class="vaultbtn sm" id="reconnect">Change Vault</button>
+          </div>
+          <canvas id="graphCanvas"></canvas>
+        </div>
+      </div>
+
+      <div class="legend" id="flowLegend">
+        <span><i class="lg" style="background:var(--green)"></i>Completed</span>
+        <span><i class="lg" style="background:var(--cyan-b)"></i>In Progress</span>
+        <span><i class="lg" style="background:var(--yellow)"></i>Waiting</span>
+        <span><i class="lg" style="background:var(--red)"></i>Error</span>
+      </div>
+    </section>
+
+    <!-- RIGHT COLUMN -->
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <!-- SYSTEM OVERVIEW -->
+      <section class="panel panel-glow sysov">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="ttl">SYSTEM OVERVIEW</div>
+          <div class="live"><span class="dot g"></span>LIVE</div>
+        </div>
+        <div class="terrain">
+          <svg viewBox="0 0 340 132" preserveAspectRatio="none">
+            <polygon points="0,132 60,50 110,90 160,30 230,95 290,55 340,110 340,132" fill="rgba(30,70,130,.5)"/>
+            <polygon points="0,132 40,80 100,110 150,60 210,115 280,80 340,120 340,132" fill="rgba(50,110,180,.35)"/>
+            <circle cx="86" cy="70" r="52" fill="none" stroke="rgba(79,201,247,.5)" stroke-width="2"/>
+            <circle cx="86" cy="70" r="52" fill="none" stroke="rgba(79,201,247,.95)" stroke-width="2.5" stroke-dasharray="70 260" stroke-linecap="round"/>
+          </svg>
+          <div class="gauge">
+            <div class="temp num">-273.15°C</div>
+            <div class="cap">System Temperature</div>
+          </div>
+          <div class="range">
+            <div class="k">Optimal Range</div>
+            <div class="v num">-280°C to -250°C</div>
+            <div class="rbar"><i></i></div>
+          </div>
+        </div>
+        <div class="s3">
+          <div><div class="k">Uptime</div><div class="v num">2h 47m 32s</div></div>
+          <div><div class="k">Requests</div><div class="v num">42</div></div>
+          <div><div class="k">Success Rate</div><div class="v g num">97.6%</div></div>
+        </div>
+      </section>
+
+      <!-- TOKEN USAGE -->
+      <section class="panel panel-glow tok">
+        <div style="display:flex;align-items:center;justify-content:space-between">
+          <div class="ttl">VAULT MAP</div>
+          <div class="link" id="vaultOpen">OPEN</div>
+        </div>
+        <div class="tok-body">
+          <div class="donut" style="width:118px;height:118px">
+            <svg viewBox="0 0 120 120" width="118" height="118">
+              <circle cx="60" cy="60" r="48" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="14"/>
+              <circle cx="60" cy="60" r="48" fill="none" stroke="#4fc9f7" stroke-width="14" stroke-dasharray="0 302" transform="rotate(-90 60 60)" id="vArcRes"/>
+              <circle cx="60" cy="60" r="48" fill="none" stroke="#3a5a7a" stroke-width="14" stroke-dasharray="0 302" stroke-dashoffset="0" transform="rotate(-90 60 60)" id="vArcUnres"/>
+            </svg>
+            <div class="cx"><b class="num" id="vaultCount">—</b><span>notes</span></div>
+          </div>
+          <div class="tok-legend">
+            <div class="tl"><span class="c" style="background:#4fc9f7"></span><span class="nm">Resolved links</span><span class="pc num" id="vRes">—</span></div>
+            <div class="tl"><span class="c" style="background:#3a5a7a"></span><span class="nm">Unresolved</span><span class="pc num" id="vUnres">—</span></div>
+            <div class="tl"><span class="c" style="background:#8b7bf0"></span><span class="nm">Orphan notes</span><span class="pc num" id="vOrph">—</span></div>
+          </div>
+        </div>
+        <div class="eff"><span class="k">Linked</span><span class="v num" id="vLinked">—</span></div>
+      </section>
+    </div>
+  </div>
+
+  <!-- ============ ROW B ============ -->
+  <div class="rowB">
+
+    <!-- AZ-OS -->
+    <section class="panel panel-glow azos">
+      <svg class="gem" viewBox="0 0 120 120" fill="none">
+        <path d="M60 8 L96 44 L60 112 L24 44 Z" stroke="#4fc9f7" stroke-width="1.6" fill="rgba(40,110,190,.14)"/>
+        <path d="M24 44 L60 60 L96 44 M60 8 L60 60 M60 60 L60 112" stroke="#2f8fe0" stroke-width="1.2"/>
+        <path d="M42 26 L60 60 L78 26" stroke="#4fc9f7" stroke-width="1"/>
+      </svg>
+      <div><h3>AZ-OS</h3><div class="v num">v2.0.0</div></div>
+      <p>Freeze Complexity.<br>Deliver Perfection.</p>
+      <div class="foot">
+        <div class="av"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 4-6 8-6s8 2 8 6"/></svg></div>
+        <span>Administrator</span>
+        <span class="dot g" style="margin-left:auto"></span>
+      </div>
+    </section>
+
+    <!-- PERFORMANCE -->
+    <section class="panel panel-glow card">
+      <div class="card-head">
+        <div class="ttl">PERFORMANCE</div>
+        <div class="pill">24H <svg viewBox="0 0 24 24" width="10" height="10" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 9l6 6 6-6"/></svg></div>
+      </div>
+      <div class="chart">
+        <div class="yl"><span>100%</span><span>75%</span><span>50%</span><span>25%</span><span>0%</span></div>
+        <div class="plot">
+          <svg viewBox="0 0 260 132" preserveAspectRatio="none">
+            <g stroke="rgba(255,255,255,.05)" stroke-width="1">
+              <line x1="0" y1="0" x2="260" y2="0"/><line x1="0" y1="33" x2="260" y2="33"/><line x1="0" y1="66" x2="260" y2="66"/><line x1="0" y1="99" x2="260" y2="99"/><line x1="0" y1="131" x2="260" y2="131"/>
+            </g>
+            <polyline fill="none" stroke="#4fc9f7" stroke-width="1.6" points="0,90 30,70 60,80 90,55 120,60 150,40 180,50 210,35 240,45 260,38"/>
+            <polyline fill="none" stroke="#33d69f" stroke-width="1.6" points="0,100 30,95 60,85 90,88 120,72 150,78 180,62 210,68 240,55 260,60"/>
+            <polyline fill="none" stroke="#e35fb0" stroke-width="1.6" points="0,110 30,105 60,100 90,95 120,90 150,85 180,80 210,78 240,72 260,70"/>
+            <polyline fill="none" stroke="#e8b93a" stroke-width="1.6" points="0,120 30,118 60,115 90,116 120,110 150,112 180,105 210,108 240,100 260,102"/>
+          </svg>
+        </div>
+        <div class="xl"><span>12:00</span><span>18:00</span><span>00:00</span><span>06:00</span><span>12:00</span></div>
+      </div>
+      <div class="clg">
+        <span><i style="background:#4fc9f7"></i>CPU</span>
+        <span><i style="background:#33d69f"></i>RAM</span>
+        <span><i style="background:#e35fb0"></i>TOKENS</span>
+        <span><i style="background:#e8b93a"></i>I/O</span>
+      </div>
+    </section>
+
+    <!-- MEMORY INSIGHTS -->
+    <section class="panel panel-glow card">
+      <div class="card-head"><div class="ttl">MEMORY INSIGHTS</div><div class="link" id="memHint">FOLDERS</div></div>
+      <div class="mem-body">
+        <div class="donut" style="width:108px;height:108px">
+          <svg viewBox="0 0 120 120" width="108" height="108">
+            <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(255,255,255,.06)" stroke-width="12"/>
+            <circle cx="60" cy="60" r="46" fill="none" stroke="#3a86e0" stroke-width="12" stroke-dasharray="225 289" transform="rotate(-90 60 60)" stroke-linecap="round" id="memArc"/>
+          </svg>
+          <div class="cx"><b class="num" id="memPct">—</b><span id="memPctLbl">notes</span></div>
+        </div>
+        <div class="mem-rows" id="memRows">
+          <div class="mr"><span class="c" style="background:#4fc9f7"></span><span class="nm">Connect a vault</span><span class="vv num">—</span></div>
+          <div class="mr"><span class="c" style="background:#33d69f"></span><span class="nm">to see folder</span><span class="vv num">—</span></div>
+          <div class="mr"><span class="c" style="background:#e35fb0"></span><span class="nm">breakdown</span><span class="vv num">—</span></div>
+          <div class="mr"><span class="c" style="background:#8b7bf0"></span><span class="nm">of your notes</span><span class="vv num">—</span></div>
+        </div>
+      </div>
+      <div class="mem-total"><span class="k">Total notes</span><span class="v num" id="memTotal">—</span></div>
+    </section>
+
+    <!-- ACTIVE PLUGINS -->
+    <section class="panel panel-glow card">
+      <div class="card-head"><div class="ttl">ACTIVE PLUGINS</div><div class="link">VIEW ALL</div></div>
+      <div class="plist">
+        <div class="pl"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 6l-5 6 5 6M16 6l5 6-5 6"/></svg></div><span class="nm">Code Analyzer</span><span class="vv num">v2.1.0</span><span class="st"></span></div>
+        <div class="pl"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="9" r="3"/><path d="M12 12v6M8 21h8"/></svg></div><span class="nm">ROS2 Navigator</span><span class="vv num">v1.8.3</span><span class="st"></span></div>
+        <div class="pl"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="6" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="12" r="2"/><path d="M6 8v8M8 6h6a2 2 0 012 2v2"/></svg></div><span class="nm">Git Intelligence</span><span class="vv num">v3.2.1</span><span class="st"></span></div>
+        <div class="pl"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M9 12l2 2 4-4"/></svg></div><span class="nm">Test Generator</span><span class="vv num">v1.4.0</span><span class="st"></span></div>
+        <div class="pl"><div class="pi"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6z"/><path d="M9 9h6M9 13h6M9 17h4"/></svg></div><span class="nm">Docs Builder</span><span class="vv num">v2.0.2</span><span class="st"></span></div>
+      </div>
+      <div class="pfoot">7 Active</div>
+    </section>
+
+    <!-- REASONING STATUS -->
+    <section class="panel panel-glow card">
+      <div class="card-head"><div class="ttl">REASONING STATUS</div></div>
+      <div class="reason-body">
+        <svg class="brain" viewBox="0 0 96 96" fill="none">
+          <g stroke="#4fc9f7" stroke-width="1" opacity=".9">
+            <path d="M48 20c-10 0-16 6-16 14 0 4-4 6-4 12s5 10 10 10c2 6 8 8 10 8s8-2 10-8c5 0 10-4 10-10s-4-8-4-12c0-8-6-14-16-14z"/>
+            <path d="M48 20v52M36 34c4 2 8 2 12 0M60 34c-4 2-8 2-12 0M34 50c6 2 10 2 14 0M62 50c-6 2-10 2-14 0"/>
+          </g>
+          <g fill="#4fc9f7"><circle cx="36" cy="34" r="1.6"/><circle cx="60" cy="34" r="1.6"/><circle cx="34" cy="50" r="1.6"/><circle cx="62" cy="50" r="1.6"/><circle cx="48" cy="42" r="1.6"/><circle cx="48" cy="62" r="1.6"/></g>
+        </svg>
+        <div class="rmeta">
+          <div><div class="k">Model</div><div class="v">Claude 3 Opus</div></div>
+          <div><div class="k">Temperature</div><div class="v">0.2</div></div>
+          <div><div class="k">Confidence</div><div class="v g num">93.4%</div></div>
+          <div><div class="k">Tokens Used</div><div class="v c num">38.1K</div></div>
+        </div>
+      </div>
+      <div class="rprog">
+        <div class="t"><span>Analyzing dependency graph...</span><span class="num">73%</span></div>
+        <div class="rbar2"><i></i></div>
+      </div>
+    </section>
+
+    <!-- RECENT ACTIVITY -->
+    <section class="panel panel-glow card">
+      <div class="card-head"><div class="ttl">RECENT ACTIVITY</div><div class="link">VIEW ALL</div></div>
+      <div class="act" id="activity">
+        <div class="ai"><span class="ts">15:42:10</span><div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2h9"/></svg></div><div class="txt"><div class="h">Workflow Step Completed</div><div class="d">Step 12/24 - Plugin Execution</div></div></div>
+        <div class="ai"><span class="ts">15:41:58</span><div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h4"/></svg></div><div class="txt"><div class="h">File Indexed</div><div class="d">/src/planner/algorithm.py</div></div></div>
+        <div class="ai"><span class="ts">15:41:45</span><div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="3"/><path d="M12 4v3M12 17v3M4 12h3M17 12h3"/></svg></div><div class="txt"><div class="h">Reasoning Started</div><div class="d">Analyzing architecture patterns</div></div></div>
+        <div class="ai"><span class="ts">15:41:30</span><div class="aic g"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="txt"><div class="h">Verification Passed</div><div class="d">All checks successful</div></div></div>
+        <div class="ai"><span class="ts">15:41:12</span><div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="6" rx="7" ry="3"/><path d="M5 6v12c0 1.7 3.1 3 7 3s7-1.3 7-3V6"/></svg></div><div class="txt"><div class="h">Research Started</div><div class="d">Gathering information from web</div></div></div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ============ ROW C ============ -->
+  <div class="rowC">
+
+    <!-- EXECUTION TIMELINE -->
+    <section class="panel panel-glow tline">
+      <div class="ttl">EXECUTION TIMELINE</div>
+      <div class="tsteps">
+        <div class="tconn"></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="7" y="7" width="10" height="10" rx="1"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M17 10h4"/></svg></div><div class="nm">Kernel</div><div class="tm">00:00:01</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="6" r="2"/><circle cx="6" cy="18" r="2"/><circle cx="18" cy="18" r="2"/><path d="M12 8v3M6 16l6-5 6 5"/></svg></div><div class="nm">State Manager</div><div class="tm">00:00:02</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><ellipse cx="12" cy="6" rx="6" ry="2.5"/><path d="M6 6v12c0 1.4 2.7 2.5 6 2.5s6-1.1 6-2.5V6"/></svg></div><div class="nm">Memory System</div><div class="tm">00:00:03</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8"/><path d="M12 8v8"/></svg></div><div class="nm">Context Manager</div><div class="tm">00:00:04</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="7" cy="7" r="2"/><circle cx="17" cy="7" r="2"/><circle cx="12" cy="17" r="2"/><path d="M7 9v3h10V9M12 12v3"/></svg></div><div class="nm">Capability Planner</div><div class="tm">00:00:05</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div><div class="nm">Workflow Scheduler</div><div class="tm">00:00:06</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 4h6l3 3v13H8z"/><path d="M14 4v3h3"/></svg></div><div class="nm">Plugin Runtime</div><div class="tm">00:00:10</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"/><circle cx="6" cy="7" r="1.6"/><circle cx="18" cy="7" r="1.6"/><circle cx="6" cy="17" r="1.6"/><circle cx="18" cy="17" r="1.6"/><path d="M7.5 8l3 3M16.5 8l-3 3"/></svg></div><div class="nm">Reasoning</div><div class="tm">00:00:10</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="11" cy="11" r="6"/><path d="M20 20l-5-5"/></svg></div><div class="nm">Research</div><div class="tm">00:00:15</div></div>
+        <div class="ts active"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="2"/><circle cx="6" cy="7" r="1.6"/><circle cx="18" cy="7" r="1.6"/><circle cx="6" cy="17" r="1.6"/><circle cx="18" cy="17" r="1.6"/><path d="M7.5 8l3 3M16.5 8l-3 3M7.5 16l3-3M16.5 16l-3-3"/></svg></div><div class="nm">Research</div><div class="tm">00:00:18</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><div class="nm">Verification</div><div class="tm">00:00:20</div></div>
+        <div class="ts done"><div class="cir"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 21V4l1-1h13l-2 4 2 4H6"/></svg></div><div class="nm">Done</div><div class="tm">00:00:25</div></div>
+      </div>
+      <div class="tlegend">
+        <span><i class="lg" style="background:var(--green)"></i>Completed</span>
+        <span><i class="lg" style="background:var(--cyan-b)"></i>In Progress</span>
+        <span><i class="lg" style="background:var(--yellow)"></i>Waiting</span>
+        <span><i class="lg" style="background:var(--red)"></i>Error</span>
+      </div>
+    </section>
+
+    <!-- QUICK ACTIONS -->
+    <section class="panel panel-glow qa">
+      <div class="ttl">QUICK ACTIONS</div>
+      <div class="qgrid">
+        <div class="qi pri"><div class="qic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 5v14M5 12h14"/></svg></div><span>New Request</span></div>
+        <div class="qi"><div class="qic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4M3 17l9 4 9-4"/></svg></div><span>View Workflows</span></div>
+        <div class="qi"><div class="qic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 12l9 4 9-4"/></svg></div><span>Memory Explorer</span></div>
+        <div class="qi"><div class="qic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 3v3a2 2 0 004 0V3h4v4h-1a2 2 0 000 4h1v6h-4v-1a2 2 0 00-4 0v1H6v-6h1a2 2 0 000-4H6V3z"/></svg></div><span>Plugin Manager</span></div>
+        <div class="qi"><div class="qic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/></svg></div><span>System Health</span></div>
+      </div>
+    </section>
+  </div>
+  </div><!-- /dashboardView -->
+
+  <section class="panel panel-glow hidden" id="sectionView"></section>
+
+  <!-- ============ COMMAND BAR ============ -->
+  <footer class="panel panel-glow cmd">
+    <div class="cube"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 2l8.5 5v10L12 22 3.5 17V7z"/><path d="M12 12l8.5-5M12 12v10M12 12L3.5 7"/></svg></div>
+    <div class="osbtn" id="osBtn">AZ-OS <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 6l6 6-6 6"/></svg></div>
+    <input class="inp" id="cmd" placeholder="Type a command or ask anything..." autocomplete="off">
+    <div class="send" id="sendBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 12h15M13 6l6 6-6 6"/></svg></div>
+    <div class="send" id="micBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M6 11a6 6 0 0012 0M12 17v3"/></svg></div>
+  </footer>
+
+</div>
+
+<div id="searchResults" class="hidden"></div>
+<div id="noteModal" class="hidden"><div class="box">
+  <div class="mh"><h3 id="mTitle"></h3><span class="path" id="mPath"></span><button class="mx" id="mClose">&times;</button></div>
+  <div class="mb" id="mBody"></div>
+</div></div>
+
+<div id="toast"></div>
+
+<script>
+(function(){
+  const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+
+  // ---- toast ----
+  const toastEl=$('#toast'); let toastT;
+  function toast(msg){toastEl.textContent=msg;toastEl.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>toastEl.classList.remove('show'),1800);}
+
+  // ---- live clock ----
+  const clockT=$('#clockT');
+  setInterval(()=>{const d=new Date();clockT.textContent=d.toLocaleTimeString('en-GB');},1000);
+  function stamp(){return new Date().toLocaleTimeString('en-GB');}
+
+  // ---- sidebar nav ----
+  const navName=a=>a.textContent.replace('NEW','').trim();
+  function activateNav(name){$$('.nav a').forEach(x=>x.classList.toggle('on',navName(x).toUpperCase()===name.toUpperCase()));}
+  $$('.nav a').forEach(a=>a.addEventListener('click',e=>{
+    e.preventDefault();
+    const name=navName(a); activateNav(name);
+    if(name==='DASHBOARD'){showDashboard();window.scrollTo({top:0,behavior:'smooth'});}
+    else if(name==='MEMORY'){showDashboard();switchView('graph');scrollFlow();if(!G.nodes.length)$('#vaultInput').click();}
+    else if(name==='EXECUTION FLOW'){showDashboard();switchView('flow');scrollFlow();}
+    else if(name==='WORKFLOWS'){showDashboard();switchView('timeline');scrollFlow();}
+    else renderSection(name);
+  }));
+
+  // ---- flow tabs (FLOW / TIMELINE / GRAPH) ----
+  const steps=[...$$('#viewFlow .node')].map(n=>({
+    idx:n.querySelector('.n').textContent,
+    name:n.querySelector('.t').textContent,
+    state:n.classList.contains('active')?'progress':(n.querySelector('.st.ok')?'done':(n.querySelector('.st')?'progress':'wait'))
+  }));
+  const stColor={done:'var(--green)',progress:'var(--cyan-b)',wait:'var(--yellow)'};
+  $('#viewTimeline').innerHTML='<div class="tl-list">'+steps.map((s,i)=>
+    `<div class="tl-row"><span class="idx">${s.idx}</span><span class="nm">${s.name}</span>`+
+    `<span class="tm">00:00:${String((i+1)*2).padStart(2,'0')}</span>`+
+    `<span class="st" style="background:${stColor[s.state]};box-shadow:0 0 6px ${stColor[s.state]}"></span></div>`).join('')+'</div>';
+
+  const views={flow:['#viewFlow','#flowLegend'],timeline:['#viewTimeline'],graph:['#viewGraph']};
+  function switchView(v){
+    $$('.tab[data-view]').forEach(x=>x.classList.toggle('on',x.dataset.view===v));
+    ['#viewFlow','#viewTimeline','#viewGraph','#flowLegend'].forEach(id=>$(id).classList.add('hidden'));
+    (views[v]||views.flow).forEach(id=>$(id).classList.remove('hidden'));
+  }
+  $$('.tab[data-view]').forEach(t=>t.addEventListener('click',()=>switchView(t.dataset.view)));
+  function scrollFlow(){document.querySelector('.flow').scrollIntoView({behavior:'smooth',block:'start'});}
+
+  // ---- section pages (real content per nav item) ----
+  const dashView=$('#dashboardView'), secView=$('#sectionView');
+  let vaultPlugins=[], curSection=null, vaultNotes=[];
+  secView.addEventListener('click',e=>{if(e.target.id==='pluginConnect')$('#vaultInput').click();});
+  function showDashboard(){secView.classList.add('hidden');dashView.classList.remove('hidden');}
+  const IC={
+    plug:'<path d="M10 3v3a2 2 0 004 0V3h4v4h-1a2 2 0 000 4h1v6h-4v-1a2 2 0 00-4 0v1H6v-6h1a2 2 0 000-4H6V3z"/>',
+    brain:'<circle cx="12" cy="12" r="3"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>',
+    search:'<circle cx="11" cy="11" r="6"/><path d="M20 20l-5-5"/>',
+    shieldCheck:'<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/><path d="M9 12l2 2 4-4"/>',
+    bars:'<path d="M4 20V10M9 20V4M14 20v-7M19 20v-11"/>',
+    shield:'<path d="M12 3l7 3v6c0 4-3 7-7 9-4-2-7-5-7-9V6z"/>',
+    cpu:'<rect x="7" y="7" width="10" height="10" rx="1"/><path d="M10 3v4M14 3v4M10 17v4M14 17v4M3 10h4M17 10h4"/>',
+    doc:'<path d="M6 3h9l3 3v15H6z"/><path d="M9 12h6M9 16h4"/>',
+    check:'<path d="M5 12l4 4 10-10"/>', x:'<path d="M6 6l12 12M18 6L6 18"/>',
+    bulb:'<path d="M9 18h6M10 21h4M12 3a6 6 0 00-4 10c1 1 1 2 1 3h6c0-1 0-2 1-3a6 6 0 00-4-10z"/>'
+  };
+  const svg=(p,w=15)=>`<svg viewBox="0 0 24 24" width="${w}" height="${w}" fill="none" stroke="currentColor" stroke-width="1.7">${p}</svg>`;
+  const SECTIONS={
+    PLUGINS:{icon:IC.plug,sub:'Installed capability modules',badge:'7 ACTIVE',
+      tiles:[['Installed','7','c'],['Enabled','7','g'],['Updates','2',''],['Registry','128','']],
+      rows:[['plug','Code Analyzer','Static analysis · v2.1.0','ENABLED','ok'],['search','ROS2 Navigator','Robotics stack · v1.8.3','ENABLED','ok'],['cpu','Git Intelligence','VCS insights · v3.2.1','ENABLED','ok'],['shieldCheck','Test Generator','Unit test synth · v1.4.0','ENABLED','ok'],['doc','Docs Builder','Doc generation · v2.0.2','ENABLED','ok'],['bulb','Vault Linker','Obsidian bridge · v0.9.1','UPDATE','warn'],['brain','Reasoning Pack','Claude models · v4.0.0','ENABLED','ok']]},
+    REASONING:{icon:IC.brain,sub:'Model orchestration and inference',badge:'CLAUDE 3 OPUS',
+      tiles:[['Model','Opus','c'],['Temperature','0.2',''],['Confidence','93.4%','g'],['Tokens','38.1K','']],
+      rows:[['brain','Analyzing dependency graph','In progress · 73%','ACTIVE','info'],['check','Architecture pattern match','Completed','DONE','ok'],['check','Context window assembled','66.3K tokens','DONE','ok'],['search','Retrieval over vault','12 sources','DONE','ok']]},
+    RESEARCH:{icon:IC.search,sub:'Web and vault information gathering',badge:'RESEARCHING',
+      tiles:[['Sources','12',''],['New insights','38','g'],['Queries','24','c'],['Depth','3','']],
+      rows:[['search','Gathering information from web','In progress','ACTIVE','info'],['doc','Indexed /src/planner/algorithm.py','File indexed','DONE','ok'],['bulb','Extracted 6 key findings','Summarized','DONE','ok']]},
+    VERIFICATION:{icon:IC.shieldCheck,sub:'Correctness and safety checks',badge:'VERIFYING',
+      tiles:[['Checks','24',''],['Passed','22','g'],['Failed','0','g'],['Pending','2','c']],
+      rows:[['check','Type checks','All passed','PASS','ok'],['check','Unit tests','22/22 green','PASS','ok'],['shieldCheck','Security scan','Running','ACTIVE','info'],['shieldCheck','Policy compliance','Queued','WAIT','warn']]},
+    EXPERIENCE:{icon:IC.bulb,sub:'Learned patterns and insights',badge:'38 NEW',
+      tiles:[['Insights','38','g'],['Patterns','156','c'],['Reused','89',''],['Stored','1.2K','']],
+      rows:[['bulb','Preferred planner heuristic','New insight','NEW','info'],['bulb','Common failure: null context','New insight','NEW','info'],['check','Applied cached workflow','Reused','DONE','ok']]},
+    GOVERNANCE:{icon:IC.shield,sub:'Policies and access control',badge:'ENFORCED',
+      tiles:[['Policies','14',''],['Active','14','g'],['Violations','0','g'],['Roles','3','c']],
+      rows:[['shield','Autonomous action bounds','Enforced','ACTIVE','ok'],['shield','Token budget guard','Enforced','ACTIVE','ok'],['shield','Vault write protection','Read-only','ACTIVE','ok'],['x','Escalation policy','Not configured','OFF','warn']]},
+    SYSTEM:{icon:IC.cpu,sub:'Runtime health and resources',badge:'HEALTHY',
+      tiles:[['Uptime','2h 47m','c'],['Requests','42',''],['Success','97.6%','g'],['Temp','-273°C','c']],
+      rows:[['cpu','CPU load','32% · 8 cores','OK','ok'],['cpu','Memory','1.42 TB · 78%','OK','ok'],['bars','I/O throughput','Nominal','OK','ok'],['shieldCheck','Kernel','Execution kernel online','OK','ok']]}
+  };
+  const esc=s=>String(s==null?'':s).replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]));
+  function showSection(html){dashView.classList.add('hidden');secView.innerHTML=html;secView.classList.remove('hidden');window.scrollTo({top:0,behavior:'smooth'});}
+  function renderSection(name){
+    curSection=name;
+    if(name==='PLUGINS') return renderPlugins();
+    const s=SECTIONS[name]; if(!s){showDashboard();return;}
+    showSection(
+      `<div class="sec-head"><div class="ico">${svg(s.icon,24)}</div>`+
+      `<div><h2>${name}</h2><div class="sub">${s.sub}</div></div>`+
+      (s.badge?`<span class="badge">${s.badge}</span>`:'')+`</div>`+
+      `<div class="sec-tiles">`+s.tiles.map(t=>`<div class="sec-tile"><div class="k">${t[0]}</div><div class="v ${t[2]||''}">${t[1]}</div></div>`).join('')+`</div>`+
+      `<div class="sec-list">`+s.rows.map(r=>
+        `<div class="sec-row"><div class="ri">${svg(IC[r[0]]||IC.doc)}</div>`+
+        `<div><div class="rt">${r[1]}</div><div class="rd">${r[2]}</div></div>`+
+        `<div class="rmeta"><span class="rtag ${r[4]}">${r[3]}</span></div></div>`).join('')+`</div>`);
+  }
+  function renderPlugins(){
+    const head=`<div class="sec-head"><div class="ico">${svg(IC.plug,24)}</div>`+
+      `<div><h2>PLUGINS</h2><div class="sub">Obsidian community plugins</div></div>`+
+      `<span class="badge">${vaultPlugins.length?vaultPlugins.filter(p=>p.enabled).length+' ENABLED':'VAULT'}</span></div>`;
+    if(!vaultPlugins.length){
+      showSection(head+`<div class="graphmsg" style="min-height:360px">`+
+        `<svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="var(--cyan-b)" stroke-width="1.4">${IC.plug}</svg>`+
+        `<div style="font-size:13px;color:#cfe0f2">No vault connected</div>`+
+        `<div>Reads <b>.obsidian/plugins</b> from your vault folder</div>`+
+        `<button class="vaultbtn" id="pluginConnect">Connect Obsidian Vault</button></div>`);
+      return;
+    }
+    const en=vaultPlugins.filter(p=>p.enabled).length;
+    const tiles=[['Installed',vaultPlugins.length,'c'],['Enabled',en,'g'],['Disabled',vaultPlugins.length-en,''],['Vault',' ✓','g']];
+    showSection(head+
+      `<div class="sec-tiles">`+tiles.map(t=>`<div class="sec-tile"><div class="k">${t[0]}</div><div class="v ${t[2]}">${t[1]}</div></div>`).join('')+`</div>`+
+      `<div class="sec-list">`+vaultPlugins.map(p=>
+        `<div class="sec-row"><div class="ri">${svg(IC.plug)}</div>`+
+        `<div><div class="rt">${esc(p.name)}</div><div class="rd">${esc(p.author||p.id)}${p.desc?' · '+esc(p.desc):''}</div></div>`+
+        `<div class="rmeta"><span class="rd num">v${esc(p.version)}</span>`+
+        `<span class="rtag ${p.enabled?'ok':'warn'}">${p.enabled?'ENABLED':'DISABLED'}</span></div></div>`).join('')+`</div>`);
+  }
+  async function parsePlugins(files){
+    const manifests=files.filter(f=>/\.obsidian\/plugins\/[^/]+\/manifest\.json$/.test(f.webkitRelativePath));
+    const commFile=files.find(f=>/\.obsidian\/community-plugins\.json$/.test(f.webkitRelativePath));
+    let enabled=[]; if(commFile){try{enabled=JSON.parse(await commFile.text());}catch(_){}}
+    const list=[];
+    for(const f of manifests){
+      try{const m=JSON.parse(await f.text());
+        list.push({id:m.id,name:m.name||m.id,version:m.version||'?',
+          author:(m.author||'').replace(/<[^>]*>/g,'').trim(),desc:m.description||'',
+          enabled:enabled.includes(m.id)});
+      }catch(_){}
+    }
+    list.sort((a,b)=>(b.enabled-a.enabled)||a.name.localeCompare(b.name));
+    vaultPlugins=list;
+  }
+  $('#expandBtn').addEventListener('click',()=>{
+    const el=document.documentElement;
+    if(!document.fullscreenElement){el.requestFullscreen&&el.requestFullscreen();toast('Fullscreen');}
+    else{document.exitFullscreen();}
+  });
+
+  // ---- command bar -> recent activity ----
+  const activity=$('#activity'), cmd=$('#cmd');
+  const bolt='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M13 3L4 14h6l-1 7 9-11h-6z"/></svg>';
+  // ---- ABSOLUTE-ZERO-2 gateway (workbench/gateway, port 8777) ----
+  let AZ=false; // true once /api/system answers: page served by the real OS
+  function applySystem(d){
+    const reqs=d.requests||[];
+    const last=reqs[reqs.length-1];
+    $('#hdrReq').textContent=last?last.request_id:'IDLE';
+    const halted=d.components&&d.components.kernel&&d.components.kernel.halted;
+    $('#hdrStatus').innerHTML=`<span class="dot ${halted?'':'g'}" style="${halted?'background:var(--red);box-shadow:0 0 8px var(--red)':''}"></span> ${halted?'HALTED':'ONLINE'}`;
+    const hv=$('#hdrVault');
+    hv.textContent=reqs.length+' requests'+(d.success_rate!=null?' · '+Math.round(d.success_rate*100)+'% ok':'');
+    hv.classList.add('accent');
+  }
+  function submitIntent(v){
+    hideResults(); cmd.value=''; toast('Submitting request …');
+    fetch('/api/requests',{method:'POST',headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({intent:v,goals:[]})})
+      .then(r=>r.ok?r.json():r.text().then(t=>Promise.reject(new Error(t))))
+      .then(res=>{
+        $('#mTitle').textContent=res.request_id||'REQUEST';
+        $('#mPath').textContent='kernel · '+(res.kernel_state||'?');
+        $('#mBody').textContent=JSON.stringify(res,null,2);
+        $('#noteModal').classList.remove('hidden');
+        const item=document.createElement('div'); item.className='ai';
+        item.innerHTML=`<span class="ts">${stamp()}</span><div class="aic">${bolt}</div>`+
+          `<div class="txt"><div class="h">${esc(res.request_id||'request')} · ${esc(res.kernel_state||'?')}</div><div class="d">${esc(v)}</div></div>`;
+        activity.prepend(item);
+        fetch('/api/system').then(r=>r.json()).then(applySystem).catch(()=>{});
+      }).catch(err=>toast('OS rejected: '+err.message.slice(0,120)));
+  }
+  function runCmd(){
+    const v=cmd.value.trim(); if(!v) return;
+    if(AZ) return submitIntent(v);
+    const item=document.createElement('div');
+    item.className='ai';
+    item.innerHTML=`<span class="ts">${stamp()}</span><div class="aic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 17l6-6-6-6M12 19h8"/></svg></div>`+
+      `<div class="txt"><div class="h">Command Executed</div><div class="d">${v.replace(/[<>&]/g,'')}</div></div>`;
+    activity.prepend(item);
+    cmd.value=''; toast('Command sent');
+  }
+  // ---- note search + preview (real vault) ----
+  const results=$('#searchResults');
+  function hideResults(){results.classList.add('hidden');results.innerHTML='';results._hits=null;}
+  function doSearch(q){
+    q=q.trim().toLowerCase();
+    if(q.length<2||!vaultNotes.length){hideResults();return;}
+    const hits=[];
+    for(const n of vaultNotes){
+      const inName=n.name.toLowerCase().includes(q);
+      const idx=n.text.toLowerCase().indexOf(q);
+      if(inName||idx>=0){
+        let snip=''; if(idx>=0){snip=n.text.slice(Math.max(0,idx-30),idx+50).replace(/\s+/g,' ').trim();}
+        hits.push({n,snip,score:inName?0:1});
+      }
+      if(hits.length>=60) break;
+    }
+    hits.sort((a,b)=>a.score-b.score||a.n.name.localeCompare(b.n.name));
+    const top=hits.slice(0,8);
+    if(!top.length){results.innerHTML='<div class="sr"><div class="s">No matches</div></div>';results.classList.remove('hidden');results._hits=[];return;}
+    results.innerHTML=top.map((h,i)=>`<div class="sr${i===0?' act':''}" data-i="${i}"><div class="n">${esc(h.n.name)}</div>${h.snip?`<div class="s">…${esc(h.snip)}…</div>`:''}</div>`).join('');
+    results.classList.remove('hidden'); results._hits=top;
+  }
+  function openNote(note){
+    hideResults();
+    $('#mTitle').textContent=note.name; $('#mPath').textContent=note.path;
+    $('#mBody').textContent=note.text||'(empty note)';
+    $('#noteModal').classList.remove('hidden');
+  }
+  results.addEventListener('click',e=>{const el=e.target.closest('.sr');if(el&&results._hits&&results._hits[+el.dataset.i])openNote(results._hits[+el.dataset.i].n);});
+  $('#mClose').addEventListener('click',()=>$('#noteModal').classList.add('hidden'));
+  $('#noteModal').addEventListener('click',e=>{if(e.target.id==='noteModal')$('#noteModal').classList.add('hidden');});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){$('#noteModal').classList.add('hidden');hideResults();}});
+  cmd.addEventListener('input',()=>doSearch(cmd.value));
+  cmd.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      if(AZ) runCmd(); // gateway mode: everything typed is an OS request
+      else if(results._hits&&results._hits.length&&!results.classList.contains('hidden')){openNote(results._hits[0].n);cmd.value='';}
+      else runCmd();
+    }
+  });
+  $('#sendBtn').addEventListener('click',runCmd);
+  $('#micBtn').addEventListener('click',()=>toast('Voice input (demo)'));
+  $('#osBtn').addEventListener('click',()=>toast('AZ-OS model selector'));
+
+  // ---- quick actions -> real targets ----
+  const qaMap={
+    'New Request':()=>{cmd.focus();cmd.scrollIntoView({behavior:'smooth',block:'center'});},
+    'View Workflows':()=>{activateNav('WORKFLOWS');switchView('timeline');scrollFlow();},
+    'Memory Explorer':()=>{activateNav('MEMORY');switchView('graph');scrollFlow();if(!G.nodes.length)$('#vaultInput').click();},
+    'Plugin Manager':()=>{activateNav('PLUGINS');renderSection('PLUGINS');},
+    'System Health':()=>{activateNav('SYSTEM');renderSection('SYSTEM');}
+  };
+  $$('.qi').forEach(q=>{const t=q.querySelector('span').textContent.trim();
+    q.addEventListener('click',()=>{(qaMap[t]||(()=>{}))();toast(t);});});
+  $$('.link').forEach(l=>l.addEventListener('click',()=>toast(l.textContent.trim())));
+
+  // ---- header icons: real actions ----
+  const hIcons=$$('.hicons svg');
+  if(hIcons[0]) hIcons[0].addEventListener('click',()=>{showDashboard();cmd.focus();cmd.scrollIntoView({behavior:'smooth',block:'center'});toast('Search');}); // magnifier
+  if(hIcons[1]) hIcons[1].addEventListener('click',()=>{showDashboard();const c=document.querySelector('#activity').closest('.card');c.scrollIntoView({behavior:'smooth',block:'center'});c.classList.add('pulse');setTimeout(()=>c.classList.remove('pulse'),1500);toast('Notifications');}); // bell
+  if(hIcons[2]) hIcons[2].addEventListener('click',()=>{if(!document.fullscreenElement){document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen();}else{document.exitFullscreen();}toast('Fullscreen');}); // expand
+  if(hIcons[3]) hIcons[3].addEventListener('click',()=>{activateNav('SYSTEM');renderSection('SYSTEM');toast('Settings');}); // gear
+  if(hIcons[4]) hIcons[4].addEventListener('click',()=>{activateNav('GOVERNANCE');renderSection('GOVERNANCE');toast('Preferences');}); // gear 2
+  $('.orb').addEventListener('click',()=>{activateNav('DASHBOARD');showDashboard();window.scrollTo({top:0,behavior:'smooth'});toast('Home');});
+
+  // ---- execution timeline steps -> pulse matching flow node ----
+  const flowNodes=$$('#viewFlow .node');
+  $$('.tsteps .ts').forEach(ts=>ts.addEventListener('click',()=>{
+    const nm=ts.querySelector('.nm').textContent.trim();
+    const up=nm.toUpperCase(), last=up.split(' ').slice(-1)[0];
+    const node=flowNodes.find(n=>n.querySelector('.t').textContent.toUpperCase().includes(up))
+             ||flowNodes.find(n=>n.querySelector('.t').textContent.toUpperCase().includes(last));
+    switchView('flow'); scrollFlow();
+    if(node){node.classList.add('pulse');setTimeout(()=>node.classList.remove('pulse'),1500);}
+    toast(nm+'  ·  '+ts.querySelector('.tm').textContent);
+  }));
+
+  // ==================================================================
+  //  OBSIDIAN VAULT GRAPH  — pick a folder, parse [[links]], force sim
+  //  ponytail: O(n²) repulsion, fine for a personal vault (<~2k notes).
+  //  Swap in a Barnes–Hut quadtree only if you hit a huge vault.
+  // ==================================================================
+  const canvas=$('#graphCanvas'), gerr=$('#graphErr');
+  let G={nodes:[],edges:[]}, adj=new Map();
+  let cam={x:0,y:0,z:1}, drag=null, panning=null, hover=null, sel=null, raf=0;
+
+  $('#connectVault').addEventListener('click',()=>$('#vaultInput').click());
+  $('#reconnect').addEventListener('click',()=>$('#vaultInput').click());
+  $('#vaultInput').addEventListener('change',e=>ingest([...e.target.files]));
+  async function ingest(all){
+    await parsePlugins(all);
+    if(curSection==='PLUGINS') renderPlugins(); // refresh if that page is open
+    const md=all.filter(f=>f.name.toLowerCase().endsWith('.md'));
+    if(md.length){
+      gerr.textContent='';
+      await buildGraph(md);
+      $('#graphIntro').classList.add('hidden');
+      $('#graphWrap').classList.remove('hidden');
+      layout(); startSim();
+    } else if(!vaultPlugins.length){
+      gerr.textContent='No .md notes or .obsidian/plugins found in that folder.';
+    }
+    toast('Vault connected'+(md.length?': '+md.length+' notes':'')+(vaultPlugins.length?' · '+vaultPlugins.length+' plugins':''));
+  }
+
+  // ---- served by the AZ-2 gateway? go live: header stats + request bar ----
+  if(location.protocol!=='file:'){
+    const pull=()=>fetch('/api/system').then(r=>r.ok?r.json():null);
+    pull().then(d=>{
+      if(!d) return;
+      AZ=true; applySystem(d);
+      setInterval(()=>pull().then(x=>x&&applySystem(x)).catch(()=>{}),5000);
+      toast('ABSOLUTE-ZERO-2 online');
+    }).catch(()=>{});
+  }
+
+  const base=f=>f.name.replace(/\.md$/i,'');
+  const mkNode=(name,over)=>Object.assign({id:0,name,file:null,deg:0,resolved:false,tag:false,x:0,y:0,vx:0,vy:0,fx:null,fy:null},over);
+  const basename=s=>s.split(/[\/\\]/).pop().replace(/\.md$/i,'');
+  const isAsset=s=>/\.(png|jpe?g|gif|bmp|svg|webp|pdf|mp[34]|mov|webm|wav|ogg|zip|excalidraw|canvas|css|js)$/i.test(s);
+  async function buildGraph(files){
+    const nodes=[], byKey=new Map(); // key = basename.toLowerCase() for notes, 'tag:x' for tags
+    const addNode=(key,node)=>{node.id=nodes.length;byKey.set(key,node);nodes.push(node);return node;};
+    for(const f of files){
+      const nm=base(f), key=nm.toLowerCase();
+      if(!byKey.has(key)) addNode(key,mkNode(nm,{file:f,resolved:true}));
+    }
+    const edges=[], seen=new Set();
+    const link=(src,tgt)=>{
+      if(!tgt||tgt===src) return;
+      const ek=src.id<tgt.id?src.id+'-'+tgt.id:tgt.id+'-'+src.id;
+      if(seen.has(ek)) return; seen.add(ek);
+      edges.push({a:src,b:tgt}); src.deg++; tgt.deg++;
+    };
+    for(const f of files){
+      const raw=await f.text();
+      const src=byKey.get(base(f).toLowerCase());
+      if(src) src.text=raw;
+      let txt=raw.replace(/```[\s\S]*?```/g,'').replace(/`[^`]*`/g,''); // strip code so #hex etc don't become tags
+      let m;
+      // [[wikilinks]] and ![[embeds]], incl [[path/Note]], [[Note|alias]], [[Note#heading]]
+      const wl=/!?\[\[([^\]]+?)\]\]/g;
+      while((m=wl.exec(txt))){
+        const raw=m[1].split('|')[0].split('#')[0].trim(); if(!raw) continue;
+        const key=basename(raw).toLowerCase(); if(!key) continue;
+        let tgt=byKey.get(key);
+        if(!tgt) tgt=addNode(key,mkNode(basename(raw),{resolved:false})); // unresolved -> faded node
+        link(src,tgt);
+      }
+      // [text](Note.md) markdown links to local notes (skip web + assets + embeds)
+      const ml=/(!?)\[[^\]]*\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g;
+      while((m=ml.exec(txt))){
+        let raw=m[2].split('#')[0].trim(); if(!raw) continue;
+        if(/^[a-z][a-z0-9+.-]*:/i.test(raw)) continue; // http:, mailto:, etc
+        try{raw=decodeURIComponent(raw);}catch(_){}
+        if(isAsset(raw)) continue;
+        const key=basename(raw).toLowerCase(); if(!key) continue;
+        link(src,byKey.get(key)); // only if the note actually exists
+      }
+      // #tags -> shared tag hub nodes (connects tag-organised notes)
+      const tg=/(?:^|[\s(>])#([A-Za-z][\w\/-]*)/g;
+      while((m=tg.exec(txt))){
+        const t=m[1]; if(/^\d+$/.test(t)) continue;
+        const key='tag:'+t.toLowerCase();
+        let tn=byKey.get(key); if(!tn) tn=addNode(key,mkNode('#'+t,{resolved:true,tag:true}));
+        link(src,tn);
+      }
+    }
+    G={nodes,edges};
+    adj=new Map(nodes.map(n=>[n,new Set()]));
+    edges.forEach(e=>{adj.get(e.a).add(e.b);adj.get(e.b).add(e.a);});
+    // stats (real note files only; tags/unresolved excluded from note counts)
+    const realNotes=nodes.filter(n=>n.file).length;
+    const orphans=nodes.filter(n=>n.file&&n.deg===0).length;
+    const noteLinks=edges.filter(e=>e.b.file).length;
+    const tagLinks=edges.filter(e=>e.b.tag).length;
+    const unresLinks=edges.filter(e=>!e.b.file&&!e.b.tag).length;
+    const resLinks=noteLinks+tagLinks;
+    const linkedPct=realNotes?Math.round((realNotes-orphans)/realNotes*100):0;
+    $('#graphStats').textContent=`${realNotes} notes · ${edges.length} links · ${orphans} orphans`;
+    $('#vaultCount').textContent=realNotes;
+    $('#vRes').textContent=resLinks; $('#vUnres').textContent=unresLinks; $('#vOrph').textContent=orphans;
+    $('#vLinked').textContent=linkedPct+'%';
+    const hv=$('#hdrVault'); hv.textContent=realNotes+' notes'; hv.classList.add('accent');
+    const C=301.6, tot=(resLinks+unresLinks)||1;
+    $('#vArcRes').setAttribute('stroke-dasharray',(resLinks/tot*C).toFixed(0)+' '+C);
+    $('#vArcUnres').setAttribute('stroke-dasharray',(unresLinks/tot*C).toFixed(0)+' '+C);
+    $('#vArcUnres').setAttribute('stroke-dashoffset',(-resLinks/tot*C).toFixed(0));
+    // search index + folder analytics
+    vaultNotes=nodes.filter(n=>n.file).map(n=>({name:n.name,path:n.file.webkitRelativePath||n.name,text:n.text||''}));
+    updateMemInsights(vaultNotes);
+  }
+  function updateMemInsights(list){
+    const counts={};
+    list.forEach(n=>{const p=(n.path||'').split(/[\/\\]/);const folder=p.length>2?p[p.length-2]:'(root)';counts[folder]=(counts[folder]||0)+1;});
+    const arr=Object.entries(counts).sort((a,b)=>b[1]-a[1]);
+    const rows=arr.slice(0,3); const others=arr.slice(3).reduce((s,x)=>s+x[1],0);
+    if(others) rows.push(['Others',others]);
+    const cols=['#4fc9f7','#33d69f','#e35fb0','#8b7bf0'];
+    $('#memRows').innerHTML=rows.slice(0,4).map((r,i)=>
+      `<div class="mr"><span class="c" style="background:${cols[i]}"></span><span class="nm">${esc(r[0])}</span><span class="vv num">${r[1]}</span></div>`).join('')
+      ||'<div class="mr"><span class="nm">No notes</span></div>';
+    $('#memPct').textContent=list.length; $('#memPctLbl').textContent='notes'; $('#memTotal').textContent=list.length;
+    const topShare=list.length&&arr.length?arr[0][1]/list.length:0;
+    $('#memArc').setAttribute('stroke-dasharray',(topShare*289).toFixed(0)+' 289');
+  }
+
+  function layout(){ // seed on a circle so the sim unfolds cleanly
+    const N=G.nodes.length, R=Math.min(canvas.clientWidth,440)/3;
+    G.nodes.forEach((n,i)=>{const a=i/N*Math.PI*2;n.x=Math.cos(a)*R*(.6+Math.random()*.5);n.y=Math.sin(a)*R*(.6+Math.random()*.5);n.vx=n.vy=0;});
+    cam={x:0,y:0,z:1};
+  }
+
+  function step(){
+    const ns=G.nodes, REP=1400, SPR=0.02, REST=64, GRAV=0.008, DAMP=0.86;
+    for(let i=0;i<ns.length;i++){
+      const a=ns[i];
+      for(let j=i+1;j<ns.length;j++){
+        const b=ns[j]; let dx=a.x-b.x, dy=a.y-b.y; let d2=dx*dx+dy*dy||0.01;
+        const f=REP/d2; const d=Math.sqrt(d2); dx/=d; dy/=d;
+        a.vx+=dx*f; a.vy+=dy*f; b.vx-=dx*f; b.vy-=dy*f;
+      }
+    }
+    G.edges.forEach(e=>{
+      let dx=e.b.x-e.a.x, dy=e.b.y-e.a.y; const d=Math.sqrt(dx*dx+dy*dy)||0.01;
+      const f=(d-REST)*SPR; dx/=d; dy/=d;
+      e.a.vx+=dx*f; e.a.vy+=dy*f; e.b.vx-=dx*f; e.b.vy-=dy*f;
+    });
+    ns.forEach(n=>{
+      n.vx-=n.x*GRAV; n.vy-=n.y*GRAV;
+      if(n.fx!=null){n.x=n.fx;n.y=n.fy;n.vx=n.vy=0;return;}
+      n.vx*=DAMP; n.vy*=DAMP; n.x+=n.vx; n.y+=n.vy;
+    });
+  }
+
+  function draw(){
+    const dpr=window.devicePixelRatio||1, W=canvas.clientWidth, H=440;
+    if(canvas.width!==W*dpr){canvas.width=W*dpr;canvas.height=H*dpr;}
+    const ctx=canvas.getContext('2d'); ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,W,H);
+    ctx.save(); ctx.translate(W/2+cam.x,H/2+cam.y); ctx.scale(cam.z,cam.z);
+    // edges
+    ctx.lineWidth=1/cam.z;
+    G.edges.forEach(e=>{
+      const hot=sel&&(e.a===sel||e.b===sel);
+      ctx.strokeStyle=hot?'rgba(79,201,247,.75)':'rgba(90,140,190,.22)';
+      ctx.beginPath(); ctx.moveTo(e.a.x,e.a.y); ctx.lineTo(e.b.x,e.b.y); ctx.stroke();
+    });
+    // nodes
+    const q=($('#graphSearch').value||'').toLowerCase();
+    G.nodes.forEach(n=>{
+      const r=4+Math.min(10,n.deg*1.4);
+      const near=sel&&(n===sel||adj.get(sel).has(n));
+      const match=q&&n.name.toLowerCase().includes(q);
+      let fill=n.tag?'#8b7bf0':(n.file?'#4fc9f7':'#3a5a7a');
+      if(match) fill='#e8b93a';
+      ctx.globalAlpha=(sel&&!near)?0.25:1;
+      ctx.beginPath(); ctx.arc(n.x,n.y,r,0,7); ctx.fillStyle=fill; ctx.fill();
+      if(n===hover||n===sel){ctx.lineWidth=2/cam.z;ctx.strokeStyle='#fff';ctx.stroke();}
+      // labels when zoomed in, or hovered/selected/searched
+      if(cam.z>0.9||n===hover||near||match){
+        ctx.globalAlpha=(sel&&!near)?0.25:0.92;
+        ctx.fillStyle='#cfe0f2'; ctx.font=(11/1)+'px Segoe UI,system-ui,sans-serif';
+        ctx.textAlign='center'; ctx.fillText(n.name,n.x,n.y+r+11);
+      }
+      ctx.globalAlpha=1;
+    });
+    ctx.restore();
+  }
+
+  function startSim(){ cancelAnimationFrame(raf);
+    (function loop(){ if(!$('#viewGraph').classList.contains('hidden')&&G.nodes.length){ step(); draw(); } raf=requestAnimationFrame(loop); })(); }
+
+  // ---- interaction: hover, drag nodes, pan, zoom, click-select ----
+  function toWorld(ev){
+    const rc=canvas.getBoundingClientRect();
+    const x=(ev.clientX-rc.left-canvas.clientWidth/2-cam.x)/cam.z;
+    const y=(ev.clientY-rc.top-220-cam.y)/cam.z; return {x,y};
+  }
+  function pick(p){
+    let best=null,bd=1e9;
+    G.nodes.forEach(n=>{const r=4+Math.min(10,n.deg*1.4)+4;const dx=n.x-p.x,dy=n.y-p.y,d=dx*dx+dy*dy;if(d<r*r&&d<bd){bd=d;best=n;}});
+    return best;
+  }
+  canvas.addEventListener('mousemove',ev=>{
+    const p=toWorld(ev);
+    if(drag){drag.fx=p.x;drag.fy=p.y;return;}
+    if(panning){cam.x+=ev.movementX;cam.y+=ev.movementY;return;}
+    hover=pick(p); canvas.style.cursor=hover?'pointer':'grab';
+  });
+  canvas.addEventListener('mousedown',ev=>{
+    const p=toWorld(ev); const n=pick(p);
+    if(n){drag=n;sel=n;n.fx=p.x;n.fy=p.y;} else {panning=true;sel=null;}
+  });
+  window.addEventListener('mouseup',()=>{if(drag){drag.fx=drag.fy=null;}drag=null;panning=false;});
+  canvas.addEventListener('wheel',ev=>{ev.preventDefault();const s=ev.deltaY<0?1.12:0.89;cam.z=Math.max(0.25,Math.min(4,cam.z*s));},{passive:false});
+  $('#graphSearch').addEventListener('input',()=>{}); // draw() reads it each frame
+  $('#vaultOpen').addEventListener('click',()=>{activateNav('MEMORY');switchView('graph');scrollFlow();if(!G.nodes.length)$('#vaultInput').click();});
+})();
+</script>
