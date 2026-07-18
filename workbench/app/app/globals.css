@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #050b16;
+  --panel: rgba(13, 25, 45, 0.62);
+  --panel-border: rgba(56, 128, 255, 0.16);
+  --accent: #38bdf8;
+  --accent-dim: #1d5f86;
+  --text: #cfe3f7;
+  --text-dim: #6b87a6;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --err: #f87171;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Segoe UI", system-ui, sans-serif;
+}
+
+body {
+  background-image:
+    radial-gradient(1200px 500px at 80% -10%, rgba(56, 128, 255, 0.08), transparent),
+    radial-gradient(900px 500px at -10% 110%, rgba(56, 189, 248, 0.06), transparent);
+  min-height: 100vh;
+}
+
+.panel {
+  background: var(--panel);
+  border: 1px solid var(--panel-border);
+  border-radius: 10px;
+  backdrop-filter: blur(14px);
+  box-shadow: 0 6px 28px rgba(2, 8, 20, 0.55);
+}
+
+.panel-title {
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--text-dim);
+}
+
+.mono {
+  font-family: "Cascadia Code", "Consolas", monospace;
+}
+
+.glow {
+  text-shadow: 0 0 12px rgba(56, 189, 248, 0.55);
+}
+
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(56, 128, 255, 0.25);
+  border-radius: 4px;
+}
+
+.react-flow__attribution {
+  display: none;
+}
