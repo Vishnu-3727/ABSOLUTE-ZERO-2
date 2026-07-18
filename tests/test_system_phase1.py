@@ -67,6 +67,42 @@ class SystemPhase1(unittest.TestCase):
                 self.assertTrue(system.store.keys("communication"))
                 self.assertTrue(system.store.keys("execution"))
                 self.assertTrue(system.store.keys("ws"))
+
+                # verification is REAL: evidence records persisted before
+                # any verdict was published (VAE-O5), and the verdicts on
+                # the wire carry the evidence refs
+                evidence_keys = [k for k in system.store.keys("vae")
+                                 if k.startswith("vae/ev/")]
+                self.assertEqual(len(evidence_keys),
+                                 len(record["run"].unit_state))
+                verdicts = system.bus.replay("verify.passed")
+                refs = [m["payload"].get("evidence_record_ref")
+                        for m in verdicts if "unit:" in str(m["payload"])]
+                self.assertTrue(refs and all(refs))
+            finally:
+                system.close()
+
+    def test_failed_execution_never_completes_the_request(self):
+        """A unit whose execution fails is terminal by WS law (no result,
+        nothing for VAE to judge): no verdict is minted for it, and the
+        kernel must NOT complete the request — its completion gate demands
+        a recorded verify.passed, never a default permit."""
+        def broken_binder(unit):
+            return {"command": [sys.executable, "-c", "raise SystemExit(3)"],
+                    "timeout_seconds": 30}
+
+        with tempfile.TemporaryDirectory() as td:
+            system = System(td, binder=broken_binder)
+            try:
+                record = system.submit("build", ["analyze"])
+                rid = record["request_id"]
+                run = record["run"]
+                self.assertTrue(any(state == "failed"
+                                    for state in run.unit_state.values()))
+                # no fabricated verdict anywhere for the failed unit
+                self.assertFalse(system.bus.replay("verify.passed"))
+                entry = system.kernel.ledger.get(rid)
+                self.assertNotEqual(entry.lifecycle_state, "completed")
             finally:
                 system.close()
 

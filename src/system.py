@@ -39,6 +39,10 @@ from sgpe.ledger import GrantLedger
 from sgpe.runtime import GovernanceRuntime
 from sgpe.store import PolicyStore
 from storage import Store
+from vae.derivation import build_derivation_policy
+from vae.rules import RulesStore
+from vae.runtime import Verification
+from vae.static_checks import StaticCheckRegistry
 from ws import ACTIVE, WorkflowRun, compile_workflow
 
 PY = sys.executable
@@ -107,6 +111,62 @@ def default_constitution():
     )
 
 
+# -- VAE wiring: the OS verifies workflow units for real -------------------
+
+class VerdictBusAdapter:
+    """Lifts VAE's reference-shaped envelope (event_name, event_id,
+    subject_ref, payload — VAE/05 §2) into the kernel wire shape the
+    `verify.*` topics carry (the matrix's consumer is the Kernel, so the
+    wire speaks kernel envelope). The request_id is recovered from the
+    artifact_ref the System itself minted ("unit:<rid>:<uid>") — this
+    adapter belongs to the composition root precisely because only the
+    composer knows that naming. No frozen VAE code is touched."""
+
+    def __init__(self, bus):
+        self._bus = bus
+
+    def publish(self, topic, message):
+        payload = dict(message.get("payload", {}))
+        subject = message.get("subject_ref", "")
+        payload["subject_ref"] = subject
+        parts = subject.split(":")
+        rid = parts[1] if len(parts) >= 3 and parts[0] == "unit" else subject
+        self._bus.publish(topic, envelope.make(
+            message["event_id"], message["event_name"], rid, 0, None,
+            payload))
+
+
+def _exec_completed_check(artifact_ref, metadata):
+    """Static check: the execution result this unit produced really is a
+    completed one. Reference-shaped: it inspects the result STATE the
+    engine reported, never artifact content."""
+    return {"outcome": "pass" if metadata.get("state") == "completed"
+            else "fail", "detail": {"state": metadata.get("state")}}
+
+
+def boot_verification(storage, bus):
+    """VAE over the real substrate. Static checks only: the delegated-
+    check path needs the Execution delegation adapter (unbuilt phase) —
+    refused, not improvised; the demand below declares no delegated
+    checks, so judgments close on static evidence alone."""
+    registry = StaticCheckRegistry()
+    registry.register("exec_completed", _exec_completed_check)
+    rules = RulesStore()
+    rules.ingest(1, {
+        "workflow_unit": {
+            "required_checks": ("exec_completed", "reference_wellformed"),
+            "depth": "standard",
+            "deadlines": {"exec_completed": 10, "reference_wellformed": 10},
+        },
+    })
+    policy = build_derivation_policy(
+        1, coverage_moderate_min_fraction=0.5,
+        coverage_strong_min_fraction=0.9)
+    return Verification(policy=policy, rules_store=rules,
+                        bus=VerdictBusAdapter(bus), storage=storage,
+                        static_registry=registry)
+
+
 def boot_governance(storage, bus):
     """Build SGPE over real Storage. First boot runs the bootstrap canon;
     a rebooted vault already carries its authored world and is NOT
@@ -146,6 +206,8 @@ class System:
                              bus=self.bus)
         self.governance = boot_governance(self.store.namespace("sgpe"),
                                           self.bus)
+        self.verification = boot_verification(self.store.namespace("vae"),
+                                              self.bus)
         self.binder = binder or default_binder
         self.requests = {}  # rid -> record of real object refs
 
@@ -167,7 +229,8 @@ class System:
         record = {"request_id": rid, "intent": intent, "goals": list(goals),
                   "provenance": {
                       "discovery": "fixture — CP phases 2-4 pending",
-                      "verification": "auto-pass — VAE not wired",
+                      "verification": "VAE static checks — delegation "
+                                      "adapter pending",
                       "binding": "stand-in commands — PRT binding pending"}}
         self.requests[rid] = record
 
@@ -235,23 +298,58 @@ class System:
             uid, result = step
             self._verdict(rid, uid, result, run)
 
-        # 4. Kernel completion through its real gates
-        self.kernel.handle(self._env(rid + ":e3", "verify.passed", rid, {}))
-        self.kernel.handle(self._env(rid + ":e4", "task.completed", rid, {}))
+        # 4. Kernel completion through its real gates — task.completed only
+        #    claims what the verdicts above already established; a failed
+        #    unit routes to task.failed and the kernel decides replan/fail.
+        all_ok = (run.status == "completed"
+                  and all(state == "succeeded"
+                          for state in run.unit_state.values()))
+        self.kernel.handle(self._env(
+            rid + ":e4", "task.completed" if all_ok else "task.failed",
+            rid, {}))
         return record
 
     # -- seams later phases replace ------------------------------------------
 
     def _verdict(self, rid, uid, result, run):
-        """Verification seam. Auto-pass, LABELED — replaced when VAE wires
-        in. Published as the canonical event so the kernel gate is really
-        enforced even while the verdict itself is a stand-in."""
+        """Verification for one dispatched unit — VAE for real (VAE/04 §5:
+        demand -> judge -> persist -> publish). The demand declares static
+        checks only; the delegated path awaits the Execution delegation
+        adapter (unbuilt phase, refused not improvised). The verdict event
+        VAE publishes is the one the workflow gate consumes — nothing here
+        invents a pass."""
         if result["state"] != "completed":
-            return
-        self.bus.publish("verify.passed", self._env(
-            "%s:v:%s" % (rid, uid), "verify.passed", rid,
-            {"unit_id": uid, "provenance": "auto-pass (VAE pending)"}))
-        run.on_verdict(uid, True)
+            # WS law: a failed execution is already terminal (on_exec_result
+            # marked it FAILED); there is no result for VAE to judge and
+            # on_verdict would refuse (ws.verdict_without_execution).
+            return None
+        artifact_ref = "unit:%s:%s" % (rid, uid)
+        self.verification.handle_demand({
+            "event_name": "verify.requested",
+            "event_id": "%s:vr:%s" % (rid, uid),
+            "artifact_ref": artifact_ref,
+            "judgment_id": "j:" + artifact_ref,
+            "artifact_type": "workflow_unit", "rules_version": 1,
+            "delegated_check_levels": {},
+            "static_check_levels": {"exec_completed": "system",
+                                    "reference_wellformed": "system"},
+        })
+        self.verification.run_static(artifact_ref, "exec_completed",
+                                     {"state": result["state"]})
+        self.verification.run_static(artifact_ref, "reference_wellformed", {})
+        emission = self.verification.try_close_and_emit(artifact_ref)
+        if emission is None or emission.outcome != "emitted":
+            raise RuntimeError("verification did not emit for " + artifact_ref)
+        passed = emission.verdict == "passed"
+        run.on_verdict(uid, passed)
+        # the kernel records each real verdict (its completion gate demands
+        # a recorded verify.passed — I5: never a default permit)
+        self.kernel.handle(self._env(
+            "%s:kv:%s" % (rid, uid),
+            "verify.passed" if passed else "verify.failed", rid,
+            {"unit_id": uid, "evidence_record_ref":
+             emission.evidence_record_ref}))
+        return emission.verdict
 
     def close(self):
         self.store.close()
